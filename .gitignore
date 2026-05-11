@@ -6,3 +6,5 @@
 *.csv
 venv
 .claude
+.env
+CLAUDE.md

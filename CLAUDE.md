@@ -131,7 +131,7 @@ Backend collects all features:
   - loan_intent             ← from loan form
   - loan_amnt               ← from loan form
   - loan_int_rate           ← set by business rules / risk tier
-  - loan_percent_income     ← auto-calculated: (loan_amnt / tenure) / person_income
+  - loan_percent_income     ← auto-calculated: loan_amnt / person_income (annual)
   - loan_grade              ← derived from internal scoring rules
   - cb_person_default_on_file    ← from internal credit history DB
   - cb_person_cred_hist_length   ← from internal credit history DB
