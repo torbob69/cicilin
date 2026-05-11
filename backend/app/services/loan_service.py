@@ -8,7 +8,6 @@ from app.core.config import settings
 from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.models.loan_application import LoanApplication
-from app.models.otp_token import OTPToken
 from app.models.repayment import Repayment
 from app.models.user import User
 from app.models.user_employment import UserEmployment
@@ -119,7 +118,7 @@ def apply_loan(data: LoanApplicationCreate, user: User, db: Session) -> LoanAppl
     return loan
 
 
-def accept_offer(loan_id: str, otp_code: str, user: User, db: Session) -> LoanApplication:
+def accept_offer(loan_id: str, otp_code: str | None, user: User, db: Session) -> LoanApplication:
     loan = db.query(LoanApplication).filter(
         LoanApplication.id == loan_id, LoanApplication.user_id == user.id
     ).first()
@@ -128,20 +127,6 @@ def accept_offer(loan_id: str, otp_code: str, user: User, db: Session) -> LoanAp
     if loan.loan_status != "approved":
         raise HTTPException(status_code=400, detail="Loan is not in approved status")
 
-    otp = (
-        db.query(OTPToken)
-        .filter(
-            OTPToken.user_id == user.id,
-            OTPToken.code == otp_code,
-            OTPToken.purpose == "loan_acceptance",
-            OTPToken.used_at.is_(None),
-        )
-        .first()
-    )
-    if not otp or otp.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
-        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
-
-    otp.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
     loan.loan_status = "disbursed"
     loan.disbursed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 

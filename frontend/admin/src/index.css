@@ -1,0 +1,50 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: #f0f0f0;
+  min-height: 100vh;
+}
+
+:root {
+  --mint: #6FCF97;
+  --mint-dim: rgba(111,207,151,0.15);
+  --amber: #E5C994;
+  --amber-dim: rgba(229,201,148,0.15);
+  --red: #E07070;
+  --red-dim: rgba(224,112,112,0.15);
+  --surface: rgba(255,255,255,0.05);
+  --border: rgba(255,255,255,0.10);
+  --ink900: #ffffff;
+  --ink700: rgba(255,255,255,0.85);
+  --ink500: rgba(255,255,255,0.50);
+  --ink400: rgba(255,255,255,0.35);
+  --ink200: rgba(255,255,255,0.12);
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+
+input, textarea, select {
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--mint);
+}

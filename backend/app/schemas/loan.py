@@ -39,4 +39,4 @@ class RepaymentResponse(BaseModel):
 
 
 class AcceptOfferRequest(BaseModel):
-    otp_code: str
+    otp_code: Optional[str] = None

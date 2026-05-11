@@ -184,15 +184,20 @@ export default function ProfileScreen() {
       {/* Documents */}
       <Text style={styles.sectionLabel}>Documents</Text>
       <GlassCard padding={0}>
-        <View style={styles.docRow}>
+        <TouchableOpacity
+          style={styles.docRow}
+          activeOpacity={0.7}
+          onPress={() => kycStatus !== 'approved' && router.push('/kyc-upload')}
+        >
           <View style={styles.docIcon}>
             <Feather name="file-text" size={17} color={Colors.mint} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.docLabel}>KTP (National ID)</Text>
-            <Text style={styles.docSub}>{kycStatus === 'approved' ? 'Verified ✓' : 'Not yet uploaded'}</Text>
+            <Text style={styles.docSub}>{kycStatus === 'approved' ? 'Verified ✓' : 'Tap to upload'}</Text>
           </View>
-        </View>
+          {kycStatus !== 'approved' && <Feather name="chevron-right" size={16} color={Colors.ink400} />}
+        </TouchableOpacity>
       </GlassCard>
 
       {/* Dev: approve KYC */}

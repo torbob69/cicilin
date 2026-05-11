@@ -1,11 +1,14 @@
 import { Feather } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -36,13 +39,82 @@ const EMP_YEARS = [
   { value: 10, label: '10+ yr' },
 ];
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+const MAX_DOB = new Date(new Date().getFullYear() - 21, 11, 31);
+const DEFAULT_DOB = new Date(1995, 0, 1);
+
+function formatDobDisplay(d: Date) {
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function DatePickerField({ value, onChange }: { value: Date | null; onChange: (d: Date) => void }) {
+  const [show, setShow] = useState(false);
+  const [tempDate, setTempDate] = useState(value ?? DEFAULT_DOB);
+
+  const handleChange = (_: any, selected?: Date) => {
+    if (Platform.OS === 'android') {
+      setShow(false);
+      if (selected) onChange(selected);
+    } else {
+      if (selected) setTempDate(selected);
+    }
+  };
+
+  const confirmIOS = () => {
+    onChange(tempDate);
+    setShow(false);
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={styles.dateField} onPress={() => setShow(true)} activeOpacity={0.7}>
+        <Feather name="calendar" size={16} color={Colors.ink400} />
+        <Text style={[styles.dateText, !value && { color: Colors.ink400 }]}>
+          {value ? formatDobDisplay(value) : 'Select date of birth'}
+        </Text>
+        <Feather name="chevron-right" size={16} color={Colors.ink400} />
+      </TouchableOpacity>
+
+      {/* Android: native dialog */}
+      {show && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={value ?? DEFAULT_DOB}
+          mode="date"
+          display="default"
+          onChange={handleChange}
+          maximumDate={MAX_DOB}
+        />
+      )}
+
+      {/* iOS: modal with spinner */}
+      {Platform.OS === 'ios' && (
+        <Modal visible={show} transparent animationType="slide">
+          <Pressable style={styles.modalOverlay} onPress={() => setShow(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShow(false)}>
+                <Text style={styles.modalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Date of Birth</Text>
+              <TouchableOpacity onPress={confirmIOS}>
+                <Text style={styles.modalDone}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleChange}
+              maximumDate={MAX_DOB}
+              themeVariant="dark"
+            />
+          </View>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: 18 }}>
       <Text style={styles.label}>{label}</Text>
@@ -86,7 +158,7 @@ export default function EditProfileScreen() {
 
   // Personal
   const [fullName, setFullName] = useState('');
-  const [dob, setDob] = useState('');
+  const [dob, setDob] = useState<Date | null>(null);
   const [homeOwnership, setHomeOwnership] = useState('');
   const [address, setAddress] = useState('');
 
@@ -104,13 +176,7 @@ export default function EditProfileScreen() {
       setFullName(u.full_name ?? '');
       setHomeOwnership(u.home_ownership ?? '');
       setAddress(u.address ?? '');
-      if (u.date_of_birth) {
-        const d = new Date(u.date_of_birth);
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        setDob(`${dd}/${mm}/${yyyy}`);
-      }
+      if (u.date_of_birth) setDob(new Date(u.date_of_birth));
       if (u.employment) {
         setEmployerName(u.employment.employer_name ?? '');
         setJobTitle(u.employment.job_title ?? '');
@@ -127,25 +193,18 @@ export default function EditProfileScreen() {
     setIncomeStr(digits ? new Intl.NumberFormat('id-ID').format(parseInt(digits, 10)) : '');
   };
 
-  const dobIso = (() => {
-    const parts = dob.split('/');
-    if (parts.length === 3 && parts[2].length === 4) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-    }
-    return '';
-  })();
-
   const save = async () => {
-    if (!dobIso && dob.length > 0) {
-      Alert.alert('Invalid date', 'Use DD/MM/YYYY format');
-      return;
-    }
     setSaving(true);
     try {
       const updates: Record<string, any> = { full_name: fullName };
       if (homeOwnership) updates.home_ownership = homeOwnership;
       if (address) updates.address = address;
-      if (dobIso) updates.date_of_birth = dobIso;
+      if (dob) {
+        const yyyy = dob.getFullYear();
+        const mm = String(dob.getMonth() + 1).padStart(2, '0');
+        const dd = String(dob.getDate()).padStart(2, '0');
+        updates.date_of_birth = `${yyyy}-${mm}-${dd}`;
+      }
 
       await api.put('/users/me', updates);
 
@@ -181,7 +240,6 @@ export default function EditProfileScreen() {
       style={{ flex: 1, backgroundColor: Colors.black }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Feather name="arrow-left" size={20} color={Colors.ink700} />
@@ -195,7 +253,6 @@ export default function EditProfileScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Personal section */}
         <Text style={styles.sectionLabel}>Personal Info</Text>
         <GlassCard padding={16} style={{ marginBottom: 20 }}>
           <Field label="Full Name">
@@ -210,26 +267,11 @@ export default function EditProfileScreen() {
           </Field>
 
           <Field label="Date of Birth">
-            <TextInput
-              style={styles.input}
-              value={dob}
-              onChangeText={setDob}
-              placeholder="DD/MM/YYYY"
-              placeholderTextColor={Colors.ink400}
-              keyboardType="number-pad"
-              maxLength={10}
-            />
-            {dob.length > 0 && !dobIso && (
-              <Text style={styles.hint}>Use DD/MM/YYYY — e.g. 15/05/1990</Text>
-            )}
+            <DatePickerField value={dob} onChange={setDob} />
           </Field>
 
           <Field label="Home Ownership">
-            <ChipRow
-              options={HOME_OPTIONS}
-              value={homeOwnership}
-              onChange={setHomeOwnership}
-            />
+            <ChipRow options={HOME_OPTIONS} value={homeOwnership} onChange={setHomeOwnership} />
           </Field>
 
           <Field label="Address (optional)">
@@ -245,7 +287,6 @@ export default function EditProfileScreen() {
           </Field>
         </GlassCard>
 
-        {/* Employment section */}
         <Text style={styles.sectionLabel}>Employment</Text>
         <GlassCard padding={16}>
           <Field label="Employer / Company Name">
@@ -271,18 +312,14 @@ export default function EditProfileScreen() {
           </Field>
 
           <Field label="Years Employed">
-            <ChipRow
-              options={EMP_YEARS}
-              value={empLength}
-              onChange={setEmpLength}
-            />
+            <ChipRow options={EMP_YEARS} value={empLength} onChange={setEmpLength} />
           </Field>
 
           <Field label="Annual Income (IDR)">
             <View style={styles.incomeRow}>
               <Text style={styles.currencyLabel}>Rp</Text>
               <TextInput
-                style={[styles.input, { flex: 1, borderWidth: 0 }]}
+                style={[styles.input, { flex: 1, borderWidth: 0, backgroundColor: 'transparent' }]}
                 value={incomeStr}
                 onChangeText={handleIncomeChange}
                 placeholder="60.000.000"
@@ -319,17 +356,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.ink900,
   },
-  hint: { fontFamily: Fonts.body, fontSize: 11, color: Colors.reject, marginTop: 4 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: Radius.full,
-    backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: Colors.ink100,
+    borderRadius: Radius.md,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
+  dateText: { flex: 1, fontFamily: Fonts.body, fontSize: 15, color: Colors.ink900 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
   chipActive: { borderColor: Colors.mint, backgroundColor: Colors.mintDim },
   chipLabel: { fontFamily: Fonts.bodyMedium, fontSize: 13, color: Colors.ink500 },
   incomeRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.ink100, borderRadius: Radius.md, paddingLeft: 14 },
   currencyLabel: { fontFamily: Fonts.displayMedium, fontSize: 15, color: Colors.ink500, marginRight: 6 },
   footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: Colors.border },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalSheet: { backgroundColor: '#1C1C1E', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontFamily: Fonts.displayMedium, fontSize: 16, color: Colors.ink900 },
+  modalCancel: { fontFamily: Fonts.body, fontSize: 16, color: Colors.ink500 },
+  modalDone: { fontFamily: Fonts.displayMedium, fontSize: 16, color: Colors.mint },
 });

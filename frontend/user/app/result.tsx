@@ -1,11 +1,13 @@
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
 import { GlassCard } from '../components/ui/GlassCard';
 import { ScoreRing } from '../components/ui/ScoreRing';
 import { Colors, Fonts, Radius } from '../constants/theme';
+import { api } from '../services/api';
 
 const formatIDR = (v: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v);
@@ -31,6 +33,7 @@ export default function ResultScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { result: resultStr } = useLocalSearchParams<{ result: string }>();
+  const [accepting, setAccepting] = useState(false);
 
   const loan = resultStr ? (() => { try { return JSON.parse(resultStr); } catch { return null; } })() : null;
 
@@ -122,7 +125,22 @@ export default function ResultScreen() {
         <>
           <Button
             label="Accept Offer"
-            onPress={() => {}}
+            loading={accepting}
+            onPress={async () => {
+              setAccepting(true);
+              try {
+                await api.post(`/loans/${loan.id}/accept-offer`, {});
+                Alert.alert(
+                  'Offer Accepted!',
+                  'Your loan has been disbursed. Check the Status tab for your repayment schedule.',
+                  [{ text: 'OK', onPress: () => router.replace('/(tabs)') }],
+                );
+              } catch (e: any) {
+                Alert.alert('Error', e.response?.data?.detail ?? 'Could not accept offer. Please try again.');
+              } finally {
+                setAccepting(false);
+              }
+            }}
             variant="primary"
             size="lg"
             fullWidth

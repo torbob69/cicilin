@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
@@ -70,7 +71,7 @@ export default function ProcessingScreen() {
           />
         </Svg>
         <View style={styles.ringCenter}>
-          <Text style={styles.brainEmoji}>🧠</Text>
+          <Feather name="cpu" size={38} color={Colors.mint} />
         </View>
       </Animated.View>
 
@@ -92,7 +93,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', padding: 40 },
   ringWrap: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center', marginBottom: 44 },
   ringCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  brainEmoji: { fontSize: 44 },
   title: { fontFamily: Fonts.display, fontSize: 24, color: Colors.ink900, textAlign: 'center', marginBottom: 12 },
   sub: { fontFamily: Fonts.body, fontSize: 15, color: Colors.ink500, textAlign: 'center', lineHeight: 24 },
   dotsRow: { flexDirection: 'row', gap: 10, marginTop: 36 },

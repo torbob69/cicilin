@@ -1,10 +1,13 @@
 import { Feather } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +20,90 @@ import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Colors, Fonts, Radius, Shadow } from '../../constants/theme';
 import { api } from '../../services/api';
+
+const MAX_DOB = new Date(new Date().getFullYear() - 21, 11, 31);
+const DEFAULT_DOB = new Date(1995, 0, 1);
+
+function formatDobDisplay(d: Date) {
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function DatePickerField({ value, onChange }: { value: Date | null; onChange: (d: Date) => void }) {
+  const [show, setShow] = useState(false);
+  const [tempDate, setTempDate] = useState(value ?? DEFAULT_DOB);
+
+  const handleChange = (_: any, selected?: Date) => {
+    if (Platform.OS === 'android') {
+      setShow(false);
+      if (selected) onChange(selected);
+    } else {
+      if (selected) setTempDate(selected);
+    }
+  };
+
+  const confirmIOS = () => {
+    onChange(tempDate);
+    setShow(false);
+  };
+
+  return (
+    <>
+      <TouchableOpacity style={dpStyles.field} onPress={() => setShow(true)} activeOpacity={0.7}>
+        <Feather name="calendar" size={16} color={Colors.ink400} />
+        <Text style={[dpStyles.text, !value && { color: Colors.ink400 }]}>
+          {value ? formatDobDisplay(value) : 'Select date of birth'}
+        </Text>
+        <Feather name="chevron-right" size={16} color={Colors.ink400} />
+      </TouchableOpacity>
+
+      {show && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={value ?? DEFAULT_DOB}
+          mode="date"
+          display="default"
+          onChange={handleChange}
+          maximumDate={MAX_DOB}
+        />
+      )}
+
+      {Platform.OS === 'ios' && (
+        <Modal visible={show} transparent animationType="slide">
+          <Pressable style={dpStyles.overlay} onPress={() => setShow(false)} />
+          <View style={dpStyles.sheet}>
+            <View style={dpStyles.sheetHeader}>
+              <TouchableOpacity onPress={() => setShow(false)}>
+                <Text style={dpStyles.cancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={dpStyles.title}>Date of Birth</Text>
+              <TouchableOpacity onPress={confirmIOS}>
+                <Text style={dpStyles.done}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleChange}
+              maximumDate={MAX_DOB}
+              themeVariant="dark"
+            />
+          </View>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+const dpStyles = StyleSheet.create({
+  field: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14 },
+  text: { flex: 1, fontFamily: Fonts.body, fontSize: 15, color: Colors.ink900 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheet: { backgroundColor: '#1C1C1E', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 32 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  title: { fontFamily: Fonts.displayMedium, fontSize: 16, color: Colors.ink900 },
+  cancel: { fontFamily: Fonts.body, fontSize: 16, color: Colors.ink500 },
+  done: { fontFamily: Fonts.displayMedium, fontSize: 16, color: Colors.mint },
+});
 
 const HOME_OPTIONS = [
   { value: 'RENT', label: 'Renting', icon: 'key' as const },
@@ -91,7 +178,7 @@ export default function SetupScreen() {
   // Step 1 — personal
   const [homeOwnership, setHomeOwnership] = useState('');
   const [address, setAddress] = useState('');
-  const [dob, setDob] = useState('');
+  const [dob, setDob] = useState<Date | null>(null);
 
   // Step 2 — employment
   const [employerName, setEmployerName] = useState('');
@@ -101,15 +188,7 @@ export default function SetupScreen() {
 
   const rawIncome = parseInt(incomeStr.replace(/[^0-9]/g, '') || '0', 10);
 
-  const dobIso = (() => {
-    const parts = dob.split('/');
-    if (parts.length === 3 && parts[2].length === 4) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-    }
-    return '';
-  })();
-
-  const canNext1 = !!homeOwnership && dobIso.length === 10;
+  const canNext1 = !!homeOwnership && !!dob;
   const canNext2 = !!employerName && empLength > 0 && rawIncome >= 1_000_000;
 
   const handleIncomeChange = (text: string) => {
@@ -120,6 +199,11 @@ export default function SetupScreen() {
   const submit = async () => {
     setLoading(true);
     try {
+      const yyyy = dob!.getFullYear();
+      const mm = String(dob!.getMonth() + 1).padStart(2, '0');
+      const dd = String(dob!.getDate()).padStart(2, '0');
+      const dobIso = `${yyyy}-${mm}-${dd}`;
+
       await Promise.all([
         api.put('/users/me', {
           home_ownership: homeOwnership,
@@ -189,19 +273,8 @@ export default function SetupScreen() {
 
             <Text style={styles.fieldLabel}>Date of Birth</Text>
             <GlassCard padding={0} style={{ marginBottom: 4 }}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="DD/MM/YYYY  e.g. 15/05/1990"
-                placeholderTextColor={Colors.ink400}
-                value={dob}
-                onChangeText={setDob}
-                keyboardType="number-pad"
-                maxLength={10}
-              />
+              <DatePickerField value={dob} onChange={setDob} />
             </GlassCard>
-            {dob.length > 0 && !dobIso && (
-              <Text style={styles.incomeHint}>Use DD/MM/YYYY format</Text>
-            )}
 
             <Text style={styles.fieldLabel}>Address <Text style={styles.optional}>(optional)</Text></Text>
             <GlassCard padding={0} style={{ marginBottom: 4 }}>

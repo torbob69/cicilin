@@ -30,6 +30,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)/verify-otp" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="edit-profile" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="kyc-upload" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="apply" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="processing" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="result" options={{ animation: 'slide_from_bottom' }} />
