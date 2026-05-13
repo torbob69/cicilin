@@ -1,9 +1,31 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth, users, loans, prediction, admin
+from app.core.config import settings
+from app.core.database import check_db_connection
 
-app = FastAPI(title="Loan Approval API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    ok = check_db_connection()
+    if ok:
+        print("[DB] Connected to 'cicilin' successfully.")
+    else:
+        print("[DB] WARNING: Could not connect to database.")
+
+    # Routers, scheduler, ML model will be registered here in later phases
+    yield
+    # Shutdown
+
+
+app = FastAPI(
+    title="Cicilin API",
+    description="Loan approval app with ML scoring",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,13 +35,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(loans.router)
-app.include_router(prediction.router)
-app.include_router(admin.router)
+
+@app.get("/")
+def root():
+    return {"message": "Cicilin API is running", "env": settings.APP_ENV}
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    db_ok = check_db_connection()
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "database": "connected" if db_ok else "unreachable",
+    }

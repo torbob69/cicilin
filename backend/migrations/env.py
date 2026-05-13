@@ -1,20 +1,18 @@
+import sys
+import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+from alembic import context
+
+# Make sure app/ is importable
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.config import settings
 from app.core.database import Base
 
-import app.models.user
-import app.models.admin
-import app.models.otp_token
-import app.models.kyc_document
-import app.models.user_employment
-import app.models.bank_account
-import app.models.credit_history
-import app.models.loan_application
-import app.models.repayment
+# Import all models so Alembic can detect them
+import app.models  # noqa: F401 — triggers __init__.py which imports every model
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
@@ -27,7 +25,12 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+    )
     with context.begin_transaction():
         context.run_migrations()
 
