@@ -158,28 +158,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
     default_on_file  = credit.default_on_file if credit else "N"
     cred_hist_length = credit.cred_hist_length if credit else 0
 
-    # ── 11. Auto-reject if default on file ────────────────────────────────────
-    if default_on_file == "Y":
-        loan = LoanApplication(
-            user_id=user.id,
-            loan_amnt=data.loan_amnt,
-            loan_intent=data.loan_intent,
-            loan_grade=loan_grade,
-            loan_int_rate=loan_int_rate,
-            loan_percent_income=loan_pct_income,
-            tenure_months=data.tenure_months,
-            monthly_installment=monthly_installment,
-            ml_score=0,
-            confidence=1.0,
-            loan_status="rejected",
-            review_status="not_required",
-        )
-        db.add(loan)
-        db.commit()
-        db.refresh(loan)
-        return LoanApplicationResponse.model_validate(loan)
-
-    # ── 12. ML scoring ────────────────────────────────────────────────────────
+    # ── 11. ML scoring ────────────────────────────────────────────────────────
     ml_result = MLService.get().predict(
         person_age=age,
         person_income_idr=annual_income,
@@ -205,7 +184,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         loan_status   = "manual_review"
         review_status = "pending"
 
-    # ── 13. Persist ───────────────────────────────────────────────────────────
+    # ── 12. Persist ───────────────────────────────────────────────────────────
     loan = LoanApplication(
         user_id=user.id,
         loan_amnt=data.loan_amnt,

@@ -54,6 +54,10 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ResendOTPRequest(BaseModel):
+    phone: str
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

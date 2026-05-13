@@ -171,6 +171,51 @@ def verify_otp(db: Session, phone: str, code: str, purpose: str) -> TokenRespons
     )
 
 
+# ── Verify OTP inline (no token issued — for mid-flow checks) ────────────────
+
+def verify_otp_inline(db: Session, user: User, code: str, purpose: str) -> None:
+    """Verify OTP for a known user without issuing tokens. Marks OTP used. Does NOT commit."""
+    now = datetime.now(timezone.utc)
+    otp = (
+        db.query(OTPToken)
+        .filter(
+            OTPToken.user_id == user.id,
+            OTPToken.purpose == purpose,
+            OTPToken.used_at.is_(None),
+        )
+        .order_by(OTPToken.created_at.desc())
+        .first()
+    )
+    if not otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active OTP found. Please request a new one.",
+        )
+    otp_expires = otp.expires_at
+    if otp_expires.tzinfo is None:
+        otp_expires = otp_expires.replace(tzinfo=timezone.utc)
+    if now > otp_expires:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="OTP has expired")
+    if otp.code != code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OTP code")
+    otp.used_at = now
+
+
+# ── Resend OTP ────────────────────────────────────────────────────────────────
+
+def resend_otp(db: Session, phone: str) -> dict:
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Phone already verified.",
+        )
+    generate_and_send_otp(db, user, purpose="registration")
+    return {"message": "OTP resent to your WhatsApp."}
+
+
 # ── Login ─────────────────────────────────────────────────────────────────────
 
 def login(db: Session, phone: str, password: str) -> TokenResponse:

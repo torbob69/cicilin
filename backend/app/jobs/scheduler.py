@@ -48,10 +48,15 @@ def run_overdue_detect() -> None:
             .filter(Repayment.status == "pending", Repayment.due_date < today)
             .all()
         )
+        newly_overdue_ids: set[int] = set()
         for rep, user in newly_overdue:
             rep.status  = "overdue"
             rep.penalty = 40
             xp_service.add_xp(db, user, -40, "late_1_7_days")
+            newly_overdue_ids.add(user.id)
+
+        for uid in newly_overdue_ids:
+            _mark_default_on_file(db, uid)
 
         # ── Tier 2: 8–30 days overdue ────────────────────────────────────────
         # autoflush=False means DB still has the old status for newly-overdue rows,

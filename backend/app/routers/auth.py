@@ -7,6 +7,7 @@ from app.schemas.user import (
     OTPVerifyRequest,
     LoginRequest,
     RefreshRequest,
+    ResendOTPRequest,
     TokenResponse,
 )
 from app.services import auth_service
@@ -32,3 +33,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/refresh", response_model=TokenResponse)
 def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
     return auth_service.refresh_access_token(db, data.refresh_token)
+
+
+@router.post("/resend-otp")
+def resend_otp(data: ResendOTPRequest, db: Session = Depends(get_db)):
+    return auth_service.resend_otp(db, data.phone)
