@@ -126,7 +126,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         db.query(LoanApplication)
         .filter(
             LoanApplication.user_id == user.id,
-            LoanApplication.created_at >= datetime(month_start.year, month_start.month, 1),
+            LoanApplication.created_at >= datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc),
             LoanApplication.loan_status.notin_(["rejected"]),
         )
         .with_entities(LoanApplication.loan_amnt)
@@ -142,8 +142,13 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         )
 
     # ── 8. loan_percent_income check ─────────────────────────────────────────
-    annual_income    = float(emp.annual_income)
-    loan_pct_income  = data.loan_amnt / annual_income
+    annual_income = float(emp.annual_income)
+    if annual_income <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Annual income must be positive.",
+        )
+    loan_pct_income = data.loan_amnt / annual_income
     if loan_pct_income > 0.40:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -159,11 +164,17 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
     cred_hist_length = credit.cred_hist_length if credit else 0
 
     # ── 11. ML scoring ────────────────────────────────────────────────────────
+    home_ownership = (user.home_ownership or "").upper()
+    if home_ownership not in ("RENT", "OWN", "MORTGAGE", "OTHER"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid home ownership value. Must be RENT, OWN, MORTGAGE, or OTHER.",
+        )
     ml_result = MLService.get().predict(
         person_age=age,
         person_income_idr=annual_income,
         person_emp_length=float(emp.emp_length),
-        person_home_ownership=user.home_ownership,
+        person_home_ownership=home_ownership,
         loan_grade=loan_grade,
         loan_amnt_idr=data.loan_amnt,
         loan_int_rate=loan_int_rate,
@@ -215,6 +226,15 @@ def list_loans(db: Session, user: User, tab: str = "all") -> list[LoanApplicatio
         q = q.filter(LoanApplication.loan_status.in_(statuses))
 
     loans = q.order_by(LoanApplication.created_at.desc()).all()
+
+    if tab == "unpaid":
+        today = date.today()
+        loans = [
+            l for l in loans
+            if l.disbursed_at is not None
+            and (l.disbursed_at.date() + relativedelta(months=l.tenure_months)) < today
+        ]
+
     return [LoanApplicationResponse.model_validate(l) for l in loans]
 
 
@@ -266,6 +286,11 @@ def accept_offer(db: Session, user: User, loan_id: int, data: AcceptOfferRequest
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Loan cannot be accepted in its current state: {loan.loan_status}",
+        )
+    if loan.monthly_installment is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Loan installment amount is missing. Please contact support.",
         )
 
     now = datetime.now(timezone.utc)

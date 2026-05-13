@@ -33,5 +33,6 @@ def get_leaderboard(db: Session, limit: int = 50) -> list[LeaderboardEntryRespon
 
 
 def invalidate_cache() -> None:
-    global _cache_ts
+    global _cache, _cache_ts
+    _cache = []
     _cache_ts = 0.0

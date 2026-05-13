@@ -79,6 +79,7 @@ def pay_installment(
 
     db.commit()
     db.refresh(repayment)
+    db.refresh(user)
 
     return PaymentResponse(
         repayment=RepaymentResponse.model_validate(repayment),

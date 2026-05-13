@@ -89,12 +89,20 @@ class AdminLoanListItem(BaseModel):
     loan_status: str
     review_status: str
     review_note: str | None
+    reviewed_by: int | None
+    reviewed_at: datetime | None
     created_at: datetime
 
 
 class LoanReviewRequest(BaseModel):
     decision: Literal["approved", "rejected"]
     review_note: str | None = None
+
+    @model_validator(mode="after")
+    def require_note_on_rejection(self) -> "LoanReviewRequest":
+        if self.decision == "rejected" and not self.review_note:
+            raise ValueError("review_note is required when rejecting a loan")
+        return self
 
 
 # ── User List ─────────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -60,6 +61,7 @@ def send_otp_whatsapp(phone: str, code: str) -> bool:
             data={"target": normalized, "message": message, "countryCode": "62"},
             timeout=10,
         )
+        print(f"[OTP] Fonnte status={r.status_code} body={r.text}")
         return r.status_code == 200
     except Exception as e:
         print(f"[OTP] Fonnte send failed: {e}")
@@ -109,7 +111,14 @@ def register_user(db: Session, data: RegisterRequest) -> dict:
         is_verified=False,
     )
     db.add(user)
-    db.flush()  # get user.id before commit
+    try:
+        db.flush()  # get user.id before commit
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Phone or email already registered",
+        )
 
     # Bootstrap credit history
     db.add(CreditHistory(user_id=user.id, default_on_file="N", cred_hist_length=0))

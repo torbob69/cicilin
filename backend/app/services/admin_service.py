@@ -156,6 +156,8 @@ def _loan_to_admin(loan: LoanApplication) -> AdminLoanListItem:
         loan_status=loan.loan_status,
         review_status=loan.review_status,
         review_note=loan.review_note,
+        reviewed_by=loan.reviewed_by,
+        reviewed_at=loan.reviewed_at,
         created_at=loan.created_at,
     )
 

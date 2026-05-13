@@ -61,7 +61,7 @@ def run_overdue_detect() -> None:
         # ── Tier 2: 8–30 days overdue ────────────────────────────────────────
         # autoflush=False means DB still has the old status for newly-overdue rows,
         # so Tier 1 repayments are not double-processed here in the same run.
-        cutoff_8 = today - timedelta(days=7)
+        cutoff_8 = today - timedelta(days=8)
         tier2: list[tuple] = (
             db.query(Repayment, User)
             .join(LoanApplication, Repayment.loan_id == LoanApplication.id)
@@ -78,7 +78,7 @@ def run_overdue_detect() -> None:
             xp_service.add_xp(db, user, -100, "late_8_30_days")
 
         # ── Tier 3: 31+ days overdue → default ───────────────────────────────
-        cutoff_30 = today - timedelta(days=30)
+        cutoff_30 = today - timedelta(days=31)
         tier3: list[tuple] = (
             db.query(Repayment, User)
             .join(LoanApplication, Repayment.loan_id == LoanApplication.id)
