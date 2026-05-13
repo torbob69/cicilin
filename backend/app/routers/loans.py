@@ -9,8 +9,10 @@ from app.schemas.loan import (
     LoanApplyRequest,
     LoanApplicationResponse,
     LoanDetailResponse,
+    PaymentResponse,
+    RepaymentResponse,
 )
-from app.services import loan_service
+from app.services import loan_service, payment_service
 
 router = APIRouter(prefix="/loans", tags=["Loans"])
 
@@ -50,3 +52,22 @@ def accept_offer(
     db: Session = Depends(get_db),
 ):
     return loan_service.accept_offer(db, user, loan_id, data)
+
+
+@router.get("/{loan_id}/repayments", response_model=list[RepaymentResponse])
+def list_repayments(
+    loan_id: int,
+    user: User = Depends(get_verified_user),
+    db: Session = Depends(get_db),
+):
+    return loan_service.list_repayments(db, user, loan_id)
+
+
+@router.post("/{loan_id}/repayments/{repayment_id}/pay", response_model=PaymentResponse)
+def pay_installment(
+    loan_id: int,
+    repayment_id: int,
+    user: User = Depends(get_verified_user),
+    db: Session = Depends(get_db),
+):
+    return payment_service.pay_installment(db, user, loan_id, repayment_id)

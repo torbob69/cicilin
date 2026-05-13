@@ -84,3 +84,11 @@ class AcceptOfferRequest(BaseModel):
         if not v.isdigit() or len(v) != 6:
             raise ValueError("PIN must be exactly 6 digits")
         return v
+
+
+class PaymentResponse(BaseModel):
+    repayment: RepaymentResponse
+    xp_gained: int
+    new_xp: int
+    new_rank: str
+    loan_closed: bool

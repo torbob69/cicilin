@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import verify_pin
 from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
@@ -16,8 +17,10 @@ from app.schemas.loan import (
     LoanApplyRequest,
     LoanApplicationResponse,
     LoanDetailResponse,
+    RepaymentResponse,
 )
 from app.services.ml_service import MLService
+from sqlalchemy.orm import joinedload
 
 _RANK_CONFIG: dict[str, dict] = {
     "Ruby":     {"grade": "A", "monthly_limit": 100_000_000, "interest_rate": 6.0},
@@ -112,7 +115,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         )
 
     # ── 6. Rank config ────────────────────────────────────────────────────────
-    rank_cfg = _RANK_CONFIG[user.rank]
+    rank_cfg = _RANK_CONFIG.get(user.rank, _RANK_CONFIG["Gold"])
     loan_grade    = rank_cfg["grade"]
     loan_int_rate = rank_cfg["interest_rate"]
     monthly_limit = rank_cfg["monthly_limit"]
@@ -177,8 +180,6 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         return LoanApplicationResponse.model_validate(loan)
 
     # ── 12. ML scoring ────────────────────────────────────────────────────────
-    from app.core.config import settings
-
     ml_result = MLService.get().predict(
         person_age=age,
         person_income_idr=annual_income,
@@ -241,13 +242,34 @@ def list_loans(db: Session, user: User, tab: str = "all") -> list[LoanApplicatio
 # ── Detail ────────────────────────────────────────────────────────────────────
 
 def get_loan(db: Session, user: User, loan_id: int) -> LoanDetailResponse:
+    loan = (
+        db.query(LoanApplication)
+        .filter(LoanApplication.id == loan_id, LoanApplication.user_id == user.id)
+        .options(joinedload(LoanApplication.repayments))
+        .first()
+    )
+    if not loan:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
+    return LoanDetailResponse.model_validate(loan)
+
+
+# ── Repayments ────────────────────────────────────────────────────────────────
+
+def list_repayments(db: Session, user: User, loan_id: int) -> list[RepaymentResponse]:
     loan = db.query(LoanApplication).filter(
         LoanApplication.id == loan_id,
         LoanApplication.user_id == user.id,
     ).first()
     if not loan:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Loan not found")
-    return LoanDetailResponse.model_validate(loan)
+
+    repayments = (
+        db.query(Repayment)
+        .filter(Repayment.loan_id == loan_id)
+        .order_by(Repayment.installment_number)
+        .all()
+    )
+    return [RepaymentResponse.model_validate(r) for r in repayments]
 
 
 # ── Accept Offer ──────────────────────────────────────────────────────────────
@@ -285,5 +307,10 @@ def accept_offer(db: Session, user: User, loan_id: int, data: AcceptOfferRequest
         ))
 
     db.commit()
-    db.refresh(loan)
+    loan = (
+        db.query(LoanApplication)
+        .filter(LoanApplication.id == loan.id)
+        .options(joinedload(LoanApplication.repayments))
+        .first()
+    )
     return LoanDetailResponse.model_validate(loan)

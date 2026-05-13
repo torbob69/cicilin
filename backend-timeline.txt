@@ -1,6 +1,6 @@
 ================================================================================
   CICILIN — BACKEND DEVELOPMENT TIMELINE
-  FastAPI + SQLAlchemy + MySQL + ML + Midtrans
+  FastAPI + SQLAlchemy + MySQL + ML (Mock Payment)
 ================================================================================
 
 Total estimated: 15 working days
@@ -28,7 +28,7 @@ Day 1 · Project Skeleton
         fastapi, uvicorn, sqlalchemy, pymysql, alembic,
         pydantic-settings, python-jose, passlib[bcrypt],
         python-multipart, cloudinary, httpx, scikit-learn,
-        pandas, midtransclient, apscheduler
+        pandas, apscheduler
   [ ] Setup .env with DATABASE_URL, SECRET_KEY, placeholders
   [ ] Write config.py (Settings class via pydantic-settings)
   [ ] Write database.py (SQLAlchemy engine + SessionLocal + Base)
@@ -252,24 +252,26 @@ Day 12 · Admin Panel API
   [ ] schemas/admin.py (KYCReviewRequest, LoanReviewRequest, UserListResponse)
 
 --------------------------------------------------------------------------------
-PHASE 9 — REPAYMENT & MIDTRANS  (Day 13–14)
+PHASE 9 — REPAYMENT & MOCK PAYMENT  (Day 13–14)
 --------------------------------------------------------------------------------
 
-Day 13 · Midtrans Integration
-  [ ] Install midtransclient
-  [ ] services/midtrans_service.py
-        - create_snap_transaction(repayment_id, amount, user) → snap_token
-        - verify_webhook_signature(notification) → bool
-        - parse_notification(notification) → { repayment_id, status }
+Day 13 · Mock Payment Service
+  [ ] services/payment_service.py
+        - pay_installment(db, user, loan_id, repayment_id)
+            · Verify repayment belongs to user's loan
+            · Verify repayment status is 'pending' or 'overdue'
+            · Mark repayment.status = 'paid', set paid_at = now
+            · Determine XP event: early (+35), on_time (+20)
+            · Call xp_service.add_xp()
+            · Check if all installments paid → set loan_status = 'closed' (+60 XP)
+            · Check quest progress
+            · Return updated repayment
   [ ] routers/loans.py (continued)
         - POST /loans/{loan_id}/repayments/{repayment_id}/pay
-            · Create Midtrans Snap transaction
-            · Return snap_token + redirect_url to frontend
-  [ ] routers/payments.py
-        - POST /payments/webhook
-            · Verify Midtrans signature
-            · On 'settlement': mark repayment paid, trigger XP gain
-            · On 'expire'/'cancel': no action (user can retry)
+            · Call payment_service.pay_installment()
+            · Return RepaymentResponse (paid_at, status, xp gained)
+
+  ENV needed: none (no external gateway)
 
 Day 14 · Overdue Detection + Penalty Logic
   [ ] services/repayment_service.py
@@ -282,9 +284,6 @@ Day 14 · Overdue Detection + Penalty Logic
         - Apply appropriate XP penalty event
         - Trigger daily XP drain for affected users
   [ ] GET /loans/{loan_id}/repayments (full schedule with status + penalty)
-
-  ENV needed: MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY
-              ngrok running for local webhook testing
 
 --------------------------------------------------------------------------------
 PHASE 10 — POLISH & TESTING  (Day 15)
@@ -364,7 +363,7 @@ Day 15 · Final Checks
   │   │   ├── xp_service.py
   │   │   ├── quest_service.py
   │   │   ├── repayment_service.py
-  │   │   ├── midtrans_service.py
+  │   │   ├── payment_service.py
   │   │   └── cloudinary_service.py
   │   └── ml/
   │       └── best_model_gradient_boosting.pkl
@@ -391,8 +390,6 @@ Day 15 · Final Checks
   CLOUDINARY_CLOUD_NAME      | Day 5 | Sign up at cloudinary.com
   CLOUDINARY_API_KEY         | Day 5 | From Cloudinary dashboard
   CLOUDINARY_API_SECRET      | Day 5 | From Cloudinary dashboard
-  MIDTRANS_SERVER_KEY        | Day 13| From sandbox.midtrans.com
-  MIDTRANS_CLIENT_KEY        | Day 13| From sandbox.midtrans.com
-  MIDTRANS_IS_PRODUCTION     | Day 13| false
+  (no payment gateway keys needed — mock payment)
 
 ================================================================================
