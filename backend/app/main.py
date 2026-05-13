@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import check_db_connection
 from app.jobs.scheduler import start_scheduler, stop_scheduler
-from app.routers import auth, admin, users, loans, leaderboard, quests
+from app.routers import auth, admin, users, loans, leaderboard, quests, prediction
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(loans.router)
 app.include_router(admin.router)
 app.include_router(leaderboard.router)
 app.include_router(quests.router)
+app.include_router(prediction.router)
 
 
 @app.get("/")
