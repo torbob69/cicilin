@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import check_db_connection
+from app.routers import auth
 
 
 @asynccontextmanager
@@ -15,7 +16,6 @@ async def lifespan(app: FastAPI):
     else:
         print("[DB] WARNING: Could not connect to database.")
 
-    # Routers, scheduler, ML model will be registered here in later phases
     yield
     # Shutdown
 
@@ -34,6 +34,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(auth.router)
 
 
 @app.get("/")
