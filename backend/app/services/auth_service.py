@@ -12,13 +12,16 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    create_admin_token,
     decode_token,
 )
 from app.models.user import User
+from app.models.admin import Admin
 from app.models.otp_token import OTPToken
 from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.schemas.user import RegisterRequest, TokenResponse
+from app.schemas.admin import AdminTokenResponse
 
 
 # ── OTP ───────────────────────────────────────────────────────────────────────
@@ -210,4 +213,20 @@ def refresh_access_token(db: Session, refresh_token: str) -> TokenResponse:
     return TokenResponse(
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
+    )
+
+
+# ── Admin Login ───────────────────────────────────────────────────────────────
+
+def admin_login(db: Session, email: str, password: str) -> AdminTokenResponse:
+    admin = db.query(Admin).filter(Admin.email == email).first()
+    if not admin or not verify_password(password, admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    return AdminTokenResponse(
+        access_token=create_admin_token(admin.id),
+        admin_id=admin.id,
+        full_name=admin.full_name,
     )
