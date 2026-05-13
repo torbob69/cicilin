@@ -6,6 +6,8 @@ from app.models.bank_account import BankAccount
 from app.models.kyc_document import KYCDocument
 from app.models.user import User
 from app.models.user_employment import UserEmployment
+from app.models.xp_event import XPEvent
+from app.schemas.quest import XPEventResponse
 from app.schemas.user import (
     BankAccountCreateRequest,
     BankAccountResponse,
@@ -140,10 +142,17 @@ def list_bank_accounts(db: Session, user: User) -> list[BankAccountResponse]:
 
 # ── Rank ──────────────────────────────────────────────────────────────────────
 
-def get_rank(user: User) -> RankResponse:
+def get_rank(db: Session, user: User) -> RankResponse:
     cfg = _RANK_CONFIG.get(user.rank, _RANK_CONFIG["Iron"])
     xp_next = cfg["xp_next"]
     xp_to_next = max(0, xp_next - user.xp) if xp_next is not None else None
+    events = (
+        db.query(XPEvent)
+        .filter(XPEvent.user_id == user.id)
+        .order_by(XPEvent.created_at.desc())
+        .limit(20)
+        .all()
+    )
     return RankResponse(
         rank=user.rank,
         xp=user.xp,
@@ -151,4 +160,5 @@ def get_rank(user: User) -> RankResponse:
         monthly_limit=cfg["monthly_limit"],
         interest_rate=cfg["interest_rate"],
         xp_to_next_rank=xp_to_next,
+        xp_events=[XPEventResponse.model_validate(e) for e in events],
     )

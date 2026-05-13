@@ -47,8 +47,11 @@ def set_pin(
 
 
 @router.get("/me/rank", response_model=RankResponse)
-def get_rank(user: User = Depends(get_verified_user)):
-    return user_service.get_rank(user)
+def get_rank(
+    user: User = Depends(get_verified_user),
+    db: Session = Depends(get_db),
+):
+    return user_service.get_rank(db, user)
 
 
 # ── KYC ──────────────────────────────────────────────────────────────────────

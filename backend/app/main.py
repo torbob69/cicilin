@@ -4,7 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import check_db_connection
-from app.routers import auth, admin, users, loans
+from app.jobs.scheduler import start_scheduler, stop_scheduler
+from app.routers import auth, admin, users, loans, leaderboard, quests
 
 
 @asynccontextmanager
@@ -15,9 +16,12 @@ async def lifespan(app: FastAPI):
         print("[DB] Connected to 'cicilin' successfully.")
     else:
         print("[DB] WARNING: Could not connect to database.")
+    start_scheduler()
 
     yield
+
     # Shutdown
+    stop_scheduler()
 
 
 app = FastAPI(
@@ -40,6 +44,8 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(loans.router)
 app.include_router(admin.router)
+app.include_router(leaderboard.router)
+app.include_router(quests.router)
 
 
 @app.get("/")

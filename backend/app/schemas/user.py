@@ -1,6 +1,8 @@
 from datetime import date, datetime
 from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
+from app.schemas.quest import XPEventResponse
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -212,3 +214,4 @@ class RankResponse(BaseModel):
     monthly_limit: int
     interest_rate: float
     xp_to_next_rank: int | None
+    xp_events: list[XPEventResponse] = []
