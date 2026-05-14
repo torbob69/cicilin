@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>cicil.in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" />
+<style>
+  /* === cicil.in design system === */
+  :root {
+    --bg: #000000;
+    --green: rgb(30, 215, 96);        /* Spotify green */
+    --green-glass: rgba(53, 255, 76, 0.28);
+    --green-glass-strong: rgba(53, 255, 76, 0.55);
+    --olive-glass: rgba(100, 143, 134, 0.30);
+    --purple-glass: rgba(80, 70, 150, 0.32);
+    --red: rgb(255, 43, 20);
+    --red-soft: rgb(255, 141, 128);
+    --orange: rgb(240, 126, 0);
+    --gold: rgb(209, 166, 110);
+    --text: rgb(255, 255, 255);
+    --text-2: rgb(219, 219, 219);
+    --text-3: rgb(170, 170, 170);
+    --text-mute: rgb(142, 142, 142);
+    --glass-tint: rgba(214, 214, 214, 0.08);
+
+    /* The glass spec rim used everywhere */
+    --glass-shadow:
+      inset 0 0 22px 0 rgba(242, 242, 242, 0.18),
+      inset 0 0 0 1px rgba(166, 166, 166, 0.55),
+      inset -2px -2px 1px -2px rgba(102, 102, 102, 0.85),
+      inset 2px 2px 1px -2px rgba(102, 102, 102, 0.85),
+      inset 3px 3px 0.5px -3.5px rgba(255, 255, 255, 0.5);
+
+    --font: 'Inter', -apple-system, 'SF Pro Display', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: #0a0a0a;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+  }
+
+  /* === Stage / phone === */
+  .stage {
+    min-height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #0a0a0a;
+  }
+  .phone {
+    width: 402px;
+    height: 874px;
+    background: #000;
+    border-radius: 56px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  /* === Status bar === */
+  .statusbar {
+    height: 50px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 12px;
+    color: #fff;
+    z-index: 30;
+  }
+  .statusbar .time {
+    font-family: var(--font);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+  }
+  .statusbar .icons { display: flex; gap: 6px; align-items: center; }
+  .statusbar .icons svg { display: block; }
+
+  /* === Screen container === */
+  .screen-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 130px;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen { scrollbar-width: none; }
+
+  /* === Type === */
+  h1, h2, h3, h4 { margin: 0; font-family: var(--font); letter-spacing: -0.025em; }
+  h1 { font-size: 30px; font-weight: 800; line-height: 1.05; }
+  h2 { font-size: 23px; font-weight: 800; line-height: 1.1; }
+  h3 { font-size: 18px; font-weight: 700; }
+  p  { margin: 0; font-size: 14px; color: var(--text-2); line-height: 1.4; }
+  .eyebrow-sub {
+    font-size: 13px;
+    color: var(--text-3);
+    font-weight: 400;
+    margin-top: 4px;
+  }
+  .muted { color: var(--text-3); }
+
+  /* === Glass surfaces (cicil signature) === */
+  .glass {
+    border-radius: 28px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    position: relative;
+  }
+  .glass-pill {
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+  }
+  .glass-circle {
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* === Buttons === */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    padding: 0 28px;
+    border-radius: 999px;
+    border: none;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+    cursor: pointer;
+    background: var(--green-glass);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.12s ease, background 0.18s ease;
+    letter-spacing: -0.01em;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:hover { background: var(--green-glass-strong); }
+  .btn.sm { height: 32px; font-size: 14px; padding: 0 18px; }
+  .btn.lg { height: 52px; font-size: 20px; padding: 0 34px; }
+
+  /* "Bayar Sekarang"-style mini pill button */
+  .btn-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    padding: 0 14px;
+    border-radius: 999px;
+    border: none;
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 10px;
+    color: #fff;
+    cursor: pointer;
+    background: var(--green-glass);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    letter-spacing: -0.005em;
+  }
+
+  /* Back button (cicil signature glass circle with green chevron) */
+  .back-btn {
+    width: 50px; height: 50px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    border: none;
+    cursor: pointer;
+    color: var(--green);
+    padding: 0;
+  }
+  .back-btn svg { stroke: currentColor; }
+
+  /* Page header pattern */
+  .page-header {
+    padding: 0 22px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .page-header .titles { flex: 1; min-width: 0; padding-top: 4px; }
+  .page-header h1 { font-size: 30px; font-weight: 800; }
+
+  /* === Selectable chip (pill) === */
+  .chip-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 50px;
+    padding: 0 24px;
+    border-radius: 999px;
+    background: rgba(32, 32, 32, 0.85);
+    color: #fff;
+    border: 1.5px solid transparent;
+    font-family: var(--font);
+    font-weight: 500;
+    font-size: 17px;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background 0.18s ease;
+    letter-spacing: -0.005em;
+  }
+  .chip-pill:hover { background: rgba(40, 40, 40, 0.95); }
+  .chip-pill.active {
+    border-color: var(--green);
+    background: rgba(20, 20, 20, 0.85);
+  }
+
+  /* === History card === */
+  .history-row {
+    height: 69px;
+    padding: 0 12px 0 16px;
+    border-radius: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+  }
+  .history-row .amount {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-2);
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .history-row .sub {
+    font-size: 11px;
+    font-weight: 300;
+    color: #fff;
+    margin-top: 6px;
+  }
+  .history-row.overdue .amount { color: var(--red-soft); font-style: italic; }
+  .history-row.overdue .sub { color: var(--red-soft); }
+  .history-row .search-circle {
+    width: 50px; height: 50px;
+    flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  /* === Quest card === */
+  .quest {
+    width: 162px;
+    height: 110px;
+    flex-shrink: 0;
+    border-radius: 28px;
+    padding: 18px 16px 12px;
+    background: var(--olive-glass);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .quest.purple { background: var(--purple-glass); }
+  .quest .title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #fff;
+  }
+  .quest .xp-pill {
+    align-self: flex-start;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    background: rgba(36, 30, 215, 0.3);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--glass-shadow);
+    font-size: 9px;
+    font-weight: 700;
+    font-style: italic;
+    color: #fff;
+    letter-spacing: 0;
+  }
+
+  /* === Progress bars === */
+  .progress-track {
+    width: 100%;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--glass-shadow);
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-track > .fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255, 252, 250, 0.95) 0%, rgba(120, 120, 120, 0.4) 100%);
+  }
+
+  /* Limit bar — bigger variant on profile */
+  .limit-bar {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+    position: relative;
+  }
+  .limit-bar > .fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ffffff 0%, #aaaaaa 60%, #444 100%);
+  }
+
+  /* === Floating nav (cicil signature) === */
+  .nav-dock {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 14px;
+    height: 70px;
+    border-radius: 999px;
+    background: rgba(40, 39, 39, 0.34);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    box-shadow: var(--glass-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 24px;
+    z-index: 25;
+  }
+  .nav-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: rgba(167, 167, 167, 1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+  }
+  .nav-btn:active { transform: scale(0.92); }
+  .nav-btn.active {
+    background: var(--glass-tint);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--glass-shadow);
+    color: var(--green);
+  }
+  .nav-btn svg { stroke: currentColor; fill: currentColor; }
+
+  /* === Rank hex (Platinum) === */
+  .rank-hex {
+    width: 200px;
+    height: 220px;
+    position: relative;
+    margin: 0 auto;
+  }
+  .rank-hex .hex-body {
+    width: 100%;
+    height: 100%;
+    background:
+      linear-gradient(160deg, rgb(180, 220, 255) 0%, rgb(95, 165, 230) 45%, rgb(20, 85, 175) 100%);
+    -webkit-clip-path: polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%);
+            clip-path: polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%);
+    position: absolute; inset: 0;
+    filter: drop-shadow(0 8px 24px rgba(0, 120, 240, 0.4));
+  }
+  .rank-hex .hex-glare {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 38%, rgba(255, 255, 255, 0.4) 48%, rgba(255, 255, 255, 0.15) 56%, transparent 70%);
+    -webkit-clip-path: polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%);
+            clip-path: polygon(50% 0%, 100% 26%, 100% 74%, 50% 100%, 0% 74%, 0% 26%);
+  }
+  .rank-hex .hex-star {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 56px; height: 56px;
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  /* === PIN dots === */
+  .pin-dots {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+  }
+  .pin-dot {
+    width: 14px; height: 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    transition: all 0.2s ease;
+  }
+  .pin-dot.filled { background: var(--green); box-shadow: 0 0 12px rgba(30, 215, 96, 0.6); }
+
+  /* === Loan confirmation rings === */
+  .ring-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 22px;
+    border-radius: 999px;
+    background: rgba(20, 20, 20, 0.6);
+    border: 1.5px solid var(--green);
+    color: #fff;
+    font-weight: 500;
+    font-size: 17px;
+  }
+  .ring-pill.warn { border-color: var(--red); }
+
+  /* === Leaderboard row === */
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    height: 56px;
+    background: rgba(24, 24, 24, 0.8);
+    cursor: pointer;
+    border: 1.5px solid transparent;
+  }
+  .lb-row.me {
+    background: rgba(36, 36, 36, 0.9);
+    border-color: rgba(167, 167, 167, 0.35);
+  }
+  .lb-row .rank {
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 24px;
+    width: 34px;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .lb-row .name {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+  }
+  .lb-row.gold .name { color: var(--gold); }
+  .lb-row.bronze .name { color: var(--orange); }
+  .lb-row .avatar {
+    width: 34px; height: 34px;
+    border-radius: 999px;
+    background: rgba(167, 167, 167, 0.95);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .lb-arrows {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 0.6;
+    color: var(--green);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+  .lb-arrows svg { stroke: var(--green); }
+
+  /* === Filter tab bar (history) === */
+  .filter-pill {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 999px;
+    background: var(--glass-tint);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    box-shadow: var(--glass-shadow);
+  }
+  .filter-pill button {
+    flex: 1;
+    height: 38px;
+    padding: 0 14px;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    color: #fff;
+    font-family: var(--font);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+    transition: all 0.18s ease;
+  }
+  .filter-pill button.active {
+    background: var(--green);
+    color: #000;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* === Field === */
+  .input-pill {
+    width: 100%;
+    height: 56px;
+    padding: 0 24px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(167, 167, 167, 0.25);
+    background: rgba(28, 28, 28, 0.9);
+    font-family: var(--font);
+    font-size: 18px;
+    color: #fff;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color 0.18s ease;
+    letter-spacing: -0.01em;
+  }
+  .input-pill::placeholder { color: rgba(255, 255, 255, 0.55); }
+  .input-pill:focus { border-color: var(--green); }
+
+  /* === Screen transition (disabled — was blocking initial render) === */
+  .screen-enter { opacity: 1; }
+
+  .quests-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    margin-right: -22px;
+    scrollbar-width: none;
+  }
+  .quests-row::-webkit-scrollbar { display: none; height: 0; }
+
+  .history-row .amount { white-space: nowrap; }
+  .history-row > div:first-child { min-width: 0; flex: 1; }
+  .history-row { white-space: nowrap; }
+  /* === Aside === */
+  .stage-aside {
+    position: fixed;
+    left: 24px; top: 24px;
+    font-family: var(--font);
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+    letter-spacing: 0.03em;
+  }
+  .stage-aside .title {
+    font-size: 16px;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+  .stage-aside .title span { color: var(--green); }
+
+  /* === Dev nav === */
+  .dev-nav {
+    position: fixed;
+    right: 24px; bottom: 24px;
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 320px;
+    z-index: 100;
+  }
+  .dev-nav button {
+    border: none;
+    background: transparent;
+    font-family: var(--font);
+    font-weight: 500;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.6);
+  }
+  .dev-nav button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+  .dev-nav button.active { background: var(--green); color: #000; }
+
+  /* === Loading pulse for waiting screen === */
+  .wait-pulse {
+    width: 56px; height: 56px;
+    border-radius: 999px;
+    border: 3px solid rgba(255, 255, 255, 0.12);
+    border-top-color: var(--green);
+    animation: spin 0.9s linear infinite;
+    margin: 0 auto 24px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div class="stage-aside">
+    <div class="title">cicil<span>.</span>in</div>
+    <div>Pinjam pinter, naik level.</div>
+  </div>
+
+  <div class="stage">
+    <div class="phone" id="phone">
+      <!-- Status bar -->
+      <div class="statusbar">
+        <span class="time">9:41</span>
+        <div class="icons">
+          <!-- cellular -->
+          <svg width="18" height="11" viewBox="0 0 18 11" fill="white"><rect x="0" y="7" width="3" height="4" rx="0.6"/><rect x="5" y="5" width="3" height="6" rx="0.6"/><rect x="10" y="2.5" width="3" height="8.5" rx="0.6"/><rect x="15" y="0" width="3" height="11" rx="0.6"/></svg>
+          <!-- wifi -->
+          <svg width="16" height="11" viewBox="0 0 16 11" fill="white"><path d="M8 1.5c2.9 0 5.5 1.1 7.5 2.9.3.3.7.3 1 0L17.7 3.2c.3-.3.3-.7 0-1A13 13 0 0 0 8 0 13 13 0 0 0-1.7 2.2c-.3.3-.3.7 0 1l1.2 1.2c.3.3.7.3 1 0A11.2 11.2 0 0 1 8 1.5Z"/><path d="M8 5.2c1.9 0 3.7.7 5 1.9.3.3.7.3 1 0l1.2-1.2c.3-.3.3-.7 0-1A9.4 9.4 0 0 0 8 3.7a9.4 9.4 0 0 0-7.2 1.2c-.3.3-.3.7 0 1l1.2 1.2c.3.3.7.3 1 0A7.5 7.5 0 0 1 8 5.2Z"/><circle cx="8" cy="9" r="1.7"/></svg>
+          <!-- battery -->
+          <svg width="27" height="13" viewBox="0 0 27 13" fill="none"><rect x="0.5" y="0.5" width="22" height="12" rx="3" stroke="white" stroke-opacity="0.4"/><rect x="2" y="2" width="19" height="9" rx="1.5" fill="white"/><rect x="23.5" y="4" width="1.5" height="5" rx="0.5" fill="white" fill-opacity="0.4"/></svg>
+        </div>
+      </div>
+
+      <!-- Screens are rendered here -->
+      <div class="screen-wrap" id="screen-wrap"></div>
+
+      <!-- Floating nav dock -->
+      <div id="nav-mount" style="position:absolute; left:0; right:0; bottom:0; z-index:25; pointer-events:none;"></div>
+    </div>
+  </div>
+
+  <div class="dev-nav" id="dev-nav"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel" src="data.jsx"></script>
+  <script type="text/babel" src="components.jsx"></script>
+  <script type="text/babel" src="screens.jsx"></script>
+  <script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

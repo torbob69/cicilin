@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Verdant — Loan Approval (Print)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+  /* Inherit the same tokens & components from the live app */
+  :root {
+    --bg: #F4F8F6;
+    --surface: #FFFFFF;
+    --surface-2: #F9FCFB;
+    --mint-50: #EEF7F1;
+    --mint-100: #DCEFE2;
+    --mint-200: #C2E3CD;
+    --mint-300: #9DD2AE;
+    --mint-500: #4FAE73;
+    --mint-700: #2E7A4F;
+    --sky-50: #EAF4F8;
+    --sky-100: #D5E9F1;
+    --sky-200: #B6D8E5;
+    --sky-300: #8FBFD4;
+    --ink-900: #0E2A35;
+    --ink-700: #1E4A5C;
+    --ink-500: #4A7585;
+    --ink-400: #6E96A4;
+    --ink-300: #9CB6C0;
+    --ink-200: #C8D7DD;
+    --ink-100: #E6EEF1;
+    --approve: #2E7A4F;
+    --approve-soft: #DCEFE2;
+    --reject: #B5563E;
+    --reject-soft: #F4DDD3;
+    --warn: #B7873B;
+    --warn-soft: #F2E4CB;
+    --radius-sm: 10px;
+    --radius: 16px;
+    --radius-lg: 22px;
+    --radius-xl: 28px;
+    --shadow-sm: 0 1px 2px rgba(14,42,53,0.04), 0 2px 6px rgba(14,42,53,0.04);
+    --shadow: 0 4px 12px rgba(14,42,53,0.06), 0 12px 32px rgba(14,42,53,0.06);
+    --shadow-lg: 0 12px 36px rgba(14,42,53,0.10), 0 32px 64px rgba(14,42,53,0.08);
+    --font-display: 'Manrope', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; font-family: var(--font-body); color: var(--ink-900); background: #EDF2F0; -webkit-font-smoothing: antialiased; }
+
+  /* PAGE LAYOUT — landscape, two phones per page */
+  @page { size: A4 landscape; margin: 1cm; }
+
+  .page {
+    width: 277mm;       /* A4 landscape inner width */
+    min-height: 188mm;  /* A4 landscape inner height (with 1cm margin) */
+    padding: 12mm 14mm;
+    background: #EDF2F0;
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto; break-after: auto; }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8mm;
+    padding-bottom: 4mm;
+    border-bottom: 1px solid var(--ink-100);
+  }
+  .page-header .brand {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink-900);
+  }
+  .page-header .meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .page-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-900);
+    margin-bottom: 4mm;
+  }
+  .page-sub {
+    font-size: 13px;
+    color: var(--ink-500);
+    margin-bottom: 8mm;
+    max-width: 200mm;
+    line-height: 1.5;
+  }
+
+  .grid-row {
+    display: flex;
+    gap: 12mm;
+    align-items: flex-start;
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .phone-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .phone-col .caption {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-500);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 5mm;
+  }
+  .phone-col .caption-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-900);
+    margin-top: 1mm;
+  }
+
+  /* Phone frame (smaller for print) */
+  .phone {
+    width: 78mm;
+    height: 168mm;
+    background: var(--bg);
+    border-radius: 36px;
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(14,42,53,0.04);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transform-origin: top center;
+  }
+  .status-bar {
+    height: 30px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--ink-900);
+  }
+  .status-bar .right { display: flex; gap: 4px; align-items: center; }
+
+  .screen { flex: 1; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+  .px { padding-left: 16px; padding-right: 16px; }
+
+  h1, h2, h3, h4 { font-family: var(--font-display); margin: 0; letter-spacing: -0.02em; }
+  h1 { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  h2 { font-size: 18px; font-weight: 700; line-height: 1.15; }
+  h3 { font-size: 14px; font-weight: 600; line-height: 1.25; }
+  p { margin: 0; line-height: 1.45; color: var(--ink-700); font-size: 12px; }
+  .muted { color: var(--ink-500); }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 40px; padding: 0 16px; border-radius: 999px; border: none;
+    font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: -0.01em;
+  }
+  .btn.primary { background: var(--ink-900); color: #fff; box-shadow: 0 4px 14px rgba(14,42,53,0.18); }
+  .btn.ghost { background: transparent; color: var(--ink-700); }
+  .btn.full { width: 100%; }
+
+  .dots { display: flex; gap: 4px; justify-content: center; }
+  .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--ink-200); }
+  .dot.active { background: var(--ink-900); width: 16px; }
+
+  .card { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid rgba(14,42,53,0.04); }
+
+  /* Form */
+  .field { margin-bottom: 12px; }
+  .field-label { display: flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--ink-700); margin-bottom: 6px; }
+  .info-btn { width: 13px; height: 13px; border-radius: 999px; border: 1.2px solid var(--ink-300); color: var(--ink-400); background: transparent; font-family: var(--font-display); font-size: 8px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+  .input, .select { width: 100%; height: 40px; padding: 0 13px; border-radius: 12px; border: 1.2px solid var(--ink-100); background: var(--surface); font-family: var(--font-body); font-size: 13px; color: var(--ink-900); }
+  .input-group { position: relative; }
+  .input-prefix { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--ink-400); font-size: 12px; font-weight: 500; }
+  .input.with-prefix { padding-left: 26px; }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { flex: 1; min-width: calc(50% - 3px); height: 38px; padding: 0 8px; border-radius: 11px; border: 1.2px solid var(--ink-100); background: var(--surface); font-family: var(--font-body); font-size: 11px; font-weight: 500; color: var(--ink-700); display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+  .chip.active { background: var(--mint-50); border-color: var(--mint-500); color: var(--mint-700); font-weight: 600; }
+  .chip.three { min-width: calc(33.333% - 4px); }
+
+  .toggle { display: flex; background: var(--ink-100); border-radius: 999px; padding: 3px; width: 100%; }
+  .toggle button { flex: 1; height: 32px; border: none; background: transparent; border-radius: 999px; font-family: var(--font-body); font-weight: 600; font-size: 11px; color: var(--ink-500); }
+  .toggle button.active { background: var(--surface); color: var(--ink-900); box-shadow: var(--shadow-sm); }
+
+  .slider-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .slider-value { font-family: var(--font-display); font-size: 17px; font-weight: 700; color: var(--ink-900); letter-spacing: -0.02em; }
+  .slider-value .unit { font-size: 11px; font-weight: 500; color: var(--ink-500); margin-left: 2px; }
+  .slider-track { width: 100%; height: 4px; border-radius: 999px; background: var(--ink-100); position: relative; margin: 6px 0; }
+  .slider-track .fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 999px; background: var(--mint-500); }
+  .slider-track .thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-radius: 999px; background: var(--surface); border: 2px solid var(--mint-500); box-shadow: var(--shadow-sm); }
+  .slider-ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 8px; color: var(--ink-400); margin-top: 2px; }
+
+  .progress-bar { height: 3px; background: var(--ink-100); border-radius: 999px; overflow: hidden; flex: 1; }
+  .progress-bar > div { height: 100%; background: var(--ink-900); border-radius: 999px; }
+
+  .tabbar { display: flex; background: var(--surface); border-top: 1px solid var(--ink-100); padding: 6px 8px 14px; gap: 3px; flex-shrink: 0; }
+  .tab { flex: 1; border: none; background: transparent; padding: 6px 3px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-400); font-family: var(--font-display); font-size: 9px; font-weight: 600; }
+  .tab.active { color: var(--ink-900); }
+
+  .step-eyebrow { font-family: var(--font-mono); font-size: 9px; font-weight: 500; color: var(--ink-400); letter-spacing: 0.05em; text-transform: uppercase; }
+  .hint { font-size: 10px; color: var(--ink-500); margin-top: 4px; line-height: 1.4; }
+
+  /* Hero shape */
+  .hero-shape { width: 150px; height: 150px; border-radius: 999px;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%), linear-gradient(140deg, var(--mint-200), var(--sky-200));
+    box-shadow: inset 0 -10px 30px rgba(46,122,79,0.12), 0 20px 40px rgba(143,191,212,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .glyph-shield { width: 60px; height: 60px; color: var(--ink-900); }
+
+  /* Pulse */
+  .pulse-ring { width: 110px; height: 110px; border-radius: 999px; background: linear-gradient(140deg, var(--mint-200), var(--sky-200)); display: flex; align-items: center; justify-content: center; }
+  .pulse-ring .core { width: 60px; height: 60px; border-radius: 999px; background: var(--surface); display: flex; align-items: center; justify-content: center; color: var(--ink-900); box-shadow: var(--shadow); }
+
+  /* Result */
+  .check-circle { width: 78px; height: 78px; border-radius: 999px; background: linear-gradient(140deg, var(--mint-200), var(--mint-300)); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(46,122,79,0.3); }
+  .check-circle svg { width: 38px; height: 38px; stroke: var(--mint-700); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  .score-ring-wrap { position: relative; width: 110px; height: 110px; }
+  .score-ring-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .score-ring-wrap .score-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .score-num { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.03em; color: var(--ink-900); line-height: 1; }
+  .score-label { font-family: var(--font-mono); font-size: 7px; color: var(--ink-500); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  .stat-tile { background: var(--surface); border: 1px solid var(--ink-100); border-radius: 12px; padding: 9px; flex: 1; }
+  .stat-tile .label { font-family: var(--font-mono); font-size: 8px; color: var(--ink-400); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .stat-tile .value { font-family: var(--font-display); font-size: 14px; font-weight: 700; color: var(--ink-900); letter-spacing: -0.02em; }
+  .stat-tile .sub { font-size: 9px; color: var(--ink-500); margin-top: 1px; }
+
+  .risk-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--ink-100); }
+  .risk-row:last-child { border-bottom: none; }
+  .risk-name { flex: 1; font-size: 11px; font-weight: 500; color: var(--ink-900); }
+  .risk-bar { width: 50px; height: 4px; background: var(--ink-100); border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+  .risk-bar > div { height: 100%; border-radius: 999px; }
+  .risk-impact { font-family: var(--font-mono); font-size: 9px; font-weight: 500; width: 30px; text-align: right; flex-shrink: 0; }
+  .impact-pos { color: var(--mint-700); }
+  .impact-neg { color: var(--reject); }
+  .impact-neu { color: var(--ink-500); }
+
+  /* History */
+  .history-item { display: flex; align-items: center; gap: 10px; padding: 11px; background: var(--surface); border-radius: 12px; border: 1px solid var(--ink-100); }
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; border-radius: 999px; font-size: 9px; font-weight: 600; font-family: var(--font-display); }
+  .badge.approved { background: var(--mint-100); color: var(--mint-700); }
+  .badge.rejected { background: var(--reject-soft); color: var(--reject); }
+  .badge.review { background: var(--warn-soft); color: var(--warn); }
+
+  /* Profile */
+  .row { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-bottom: 1px solid var(--ink-100); }
+  .row:last-child { border-bottom: none; }
+  .row-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--mint-50); color: var(--mint-700); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .row-label { flex: 1; font-size: 11px; font-weight: 500; color: var(--ink-900); }
+  .row-value { font-size: 10px; color: var(--ink-500); }
+  .row-chev { color: var(--ink-300); }
+
+  .avatar { width: 56px; height: 56px; border-radius: 999px; background: linear-gradient(140deg, var(--mint-200), var(--sky-200)); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--ink-900); box-shadow: var(--shadow-sm); }
+
+  .topbar { display: flex; align-items: center; gap: 8px; padding: 8px 16px 6px; }
+  .topbar h2 { flex: 1; }
+  .iconbtn { width: 30px; height: 30px; border-radius: 9px; background: var(--surface); border: 1px solid var(--ink-100); color: var(--ink-700); display: flex; align-items: center; justify-content: center; }
+
+  .feature-tile { width: 70px; height: 70px; border-radius: 22px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); }
+
+  /* Cover */
+  .cover {
+    width: 277mm;
+    min-height: 188mm;
+    background: linear-gradient(140deg, #EAF4F8 0%, #EEF7F1 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 24mm 22mm;
+    page-break-after: always;
+    break-after: page;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .cover-brand { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--ink-900); }
+  .cover-date { font-family: var(--font-mono); font-size: 11px; color: var(--ink-500); letter-spacing: 0.08em; text-transform: uppercase; }
+  .cover-mid { display: flex; align-items: flex-end; gap: 16mm; }
+  .cover-text { flex: 1; }
+  .cover-eyebrow { font-family: var(--font-mono); font-size: 11px; color: var(--ink-700); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6mm; }
+  .cover-title { font-family: var(--font-display); font-size: 64px; font-weight: 800; letter-spacing: -0.035em; color: var(--ink-900); line-height: 1.0; margin-bottom: 6mm; }
+  .cover-sub { font-size: 16px; color: var(--ink-700); max-width: 130mm; line-height: 1.5; }
+  .cover-shape { width: 90mm; height: 90mm; border-radius: 999px;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), transparent 60%), linear-gradient(140deg, var(--mint-200), var(--sky-200));
+    box-shadow: inset 0 -16px 40px rgba(46,122,79,0.12), 0 30px 60px rgba(143,191,212,0.3);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .cover-shape svg { width: 110px; height: 110px; color: var(--ink-900); }
+  .cover-bottom { display: flex; gap: 8mm; }
+  .cover-tag { padding: 4mm 7mm; border-radius: 999px; background: rgba(255,255,255,0.6); font-family: var(--font-display); font-size: 12px; font-weight: 600; color: var(--ink-700); border: 1px solid rgba(14,42,53,0.06); }
+
+  @media print {
+    body { background: white; }
+    .page, .cover { page-break-inside: avoid; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<!-- ============ COVER ============ -->
+<section class="cover">
+  <div class="cover-top">
+    <div class="cover-brand">Verdant</div>
+    <div class="cover-date">May 2026 · v1.0</div>
+  </div>
+  <div class="cover-mid">
+    <div class="cover-text">
+      <div class="cover-eyebrow">Mobile Prototype · Design Specification</div>
+      <div class="cover-title">Loan<br/>Approval App.</div>
+      <div class="cover-sub">A calm, transparent way to check loan eligibility. Eleven inputs, an instant decision, and a per-feature breakdown of what drove it — designed for an ML-backed scoring deployment.</div>
+    </div>
+    <div class="cover-shape">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l9 4v6c0 5.5-4 9.5-9 10-5-.5-9-4.5-9-10V6l9-4z"/>
+        <path d="M8.5 12l2.5 2.5L16 9.5"/>
+      </svg>
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <span class="cover-tag">11 features</span>
+    <span class="cover-tag">9 screens</span>
+    <span class="cover-tag">Mint · Sky · Trust blue</span>
+    <span class="cover-tag">Manrope · Inter</span>
+  </div>
+</section>
+
+<!-- ============ PAGE 1: ONBOARDING ============ -->
+<section class="page">
+  <div class="page-header">
+    <div class="brand">Verdant · Loan Approval App</div>
+    <div class="meta">01 · Onboarding</div>
+  </div>
+  <div class="page-title">Onboarding</div>
+  <div class="page-sub">A welcome moment that establishes trust before any data is asked for. Three feature slides communicate speed, transparency, and privacy — the three reassurances most users need.</div>
+
+  <div class="grid-row">
+    <!-- Welcome -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar">
+          <span>9:41</span>
+          <div class="right">
+            <svg width="14" height="9" viewBox="0 0 18 12" fill="none"><path d="M1 8.5C2 7.5 4 6 9 6C14 6 16 7.5 17 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M3.5 10.5C4.5 9.8 6 9 9 9C12 9 13.5 9.8 14.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="9" cy="11" r="1" fill="currentColor"/></svg>
+            <svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg>
+          </div>
+        </div>
+        <div class="screen">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px;">
+            <div class="hero-shape" style="margin-bottom:20px">
+              <svg class="glyph-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l9 4v6c0 5.5-4 9.5-9 10-5-.5-9-4.5-9-10V6l9-4z"/>
+                <path d="M8.5 12l2.5 2.5L16 9.5"/>
+              </svg>
+            </div>
+            <div style="text-align:center;">
+              <h1 style="margin-bottom:8px;">Borrow with confidence.</h1>
+              <p style="font-size:12px;">A quieter way to check your loan eligibility. Answer eleven questions, see your decision in seconds.</p>
+            </div>
+          </div>
+          <div class="px" style="padding-bottom:20px">
+            <button class="btn primary full" style="margin-bottom:8px;">Get started</button>
+            <button class="btn ghost full">I already have an account</button>
+            <div style="display:flex; align-items:center; justify-content:center; gap:5px; margin-top:12px; color:var(--ink-400); font-size:9px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+              <span>Bank-level encryption · Never shared</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">01 · Welcome</div>
+      <div class="caption-title">Hero with shield motif</div>
+    </div>
+
+    <!-- Feature carousel slide -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="display:flex; justify-content:flex-end; padding:8px 16px;">
+            <button class="btn ghost" style="height:24px; padding:0 10px; font-size:10px;">Skip</button>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 22px; text-align:center;">
+            <div class="feature-tile" style="background:linear-gradient(140deg, var(--mint-100), var(--mint-200)); color:var(--ink-900); margin-bottom:22px;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>
+            </div>
+            <h2 style="margin-bottom:10px;">Instant decisions</h2>
+            <p style="font-size:11px; max-width:200px;">Our model evaluates your application against thousands of patterns and returns a result in under three seconds.</p>
+          </div>
+          <div class="px" style="padding-bottom:20px">
+            <div class="dots" style="margin-bottom:14px;">
+              <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+            <button class="btn primary full">Continue</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">02 · Carousel</div>
+      <div class="caption-title">Instant decisions</div>
+    </div>
+
+    <!-- Feature carousel slide 3 -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="display:flex; justify-content:flex-end; padding:8px 16px;">
+            <button class="btn ghost" style="height:24px; padding:0 10px; font-size:10px;">Skip</button>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 22px; text-align:center;">
+            <div class="feature-tile" style="background:linear-gradient(140deg, var(--mint-100), var(--mint-200)); color:var(--ink-900); margin-bottom:22px;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+            </div>
+            <h2 style="margin-bottom:10px;">Private by design</h2>
+            <p style="font-size:11px; max-width:200px;">Your information stays on your device until you choose to submit. Encryption is on by default, always.</p>
+          </div>
+          <div class="px" style="padding-bottom:20px">
+            <div class="dots" style="margin-bottom:14px;">
+              <div class="dot"></div><div class="dot"></div><div class="dot active"></div>
+            </div>
+            <button class="btn primary full">Start application</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">03 · Carousel</div>
+      <div class="caption-title">Private by design</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 2: HOME / DASHBOARD ============ -->
+<section class="page">
+  <div class="page-header">
+    <div class="brand">Verdant · Loan Approval App</div>
+    <div class="meta">02 · Home + Tabs</div>
+  </div>
+  <div class="page-title">Dashboard</div>
+  <div class="page-sub">After onboarding, the user lands on a calm dashboard. The hero card invites a new application, two stat tiles surface lifetime stats, and recent activity gives one-tap access to past decisions.</div>
+
+  <div class="grid-row" style="justify-content:center; gap:18mm;">
+    <!-- Home -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div class="px" style="padding-top:10px; padding-bottom:14px; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-size:10px; color:var(--ink-500); margin-bottom:2px;">Good morning,</div>
+              <h2 style="font-size:16px;">Amelia 🌿</h2>
+            </div>
+            <div class="iconbtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1112 0c0 7 3 7 3 9H3c0-2 3-2 3-9z"/><path d="M10 21a2 2 0 004 0"/></svg></div>
+          </div>
+          <div class="px" style="margin-bottom:14px;">
+            <div style="background:linear-gradient(140deg, var(--mint-100), var(--sky-100)); border-radius:18px; padding:16px; position:relative; overflow:hidden;">
+              <div style="font-family:var(--font-mono); font-size:8px; color:var(--ink-700); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Quick check</div>
+              <h2 style="font-size:15px; margin-bottom:4px; line-height:1.2;">Check your loan eligibility</h2>
+              <p style="font-size:10px; color:var(--ink-700); margin-bottom:10px;">4 steps · ~2 minutes · No impact on credit</p>
+              <button class="btn primary" style="height:32px; font-size:11px;">+ New application</button>
+            </div>
+          </div>
+          <div class="px" style="display:flex; gap:6px; margin-bottom:14px;">
+            <div class="stat-tile">
+              <div class="label">Approved</div>
+              <div class="value">$16,500</div>
+              <div class="sub">lifetime</div>
+            </div>
+            <div class="stat-tile">
+              <div class="label">Avg score</div>
+              <div class="value">71</div>
+              <div class="sub" style="color:var(--mint-700)">+4 this quarter</div>
+            </div>
+          </div>
+          <div class="px">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <h3 style="font-size:12px;">Recent activity</h3>
+              <span style="font-size:10px; color:var(--ink-500);">See all</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div class="history-item">
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                    <div style="font-family:var(--font-display); font-weight:700; font-size:12px;">$12,000</div>
+                    <span class="badge approved">Approved</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                    <span>Debt Consolidate · Grade B</span>
+                    <span style="font-family:var(--font-mono);">Apr 18</span>
+                  </div>
+                </div>
+              </div>
+              <div class="history-item">
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                    <div style="font-family:var(--font-display); font-weight:700; font-size:12px;">$4,500</div>
+                    <span class="badge approved">Approved</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                    <span>Medical · Grade A</span>
+                    <span style="font-family:var(--font-mono);">Mar 2</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a2 2 0 01-2 2h-3v-6h-6v6H6a2 2 0 01-2-2v-9z"/></svg><span>Home</span></div>
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.5"/><path d="M3 4v4h4M12 7v5l3 2"/></svg><span>History</span></div>
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="caption">04 · Tabs / Home</div>
+      <div class="caption-title">Dashboard with hero CTA</div>
+    </div>
+
+    <!-- Notes -->
+    <div style="flex:1; max-width:120mm; padding-top:8mm;">
+      <h3 style="font-size:14px; margin-bottom:6mm;">Design system</h3>
+      <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:4mm; margin-bottom:8mm;">
+        <div style="padding:8px; border-radius:10px; background:var(--surface); border:1px solid var(--ink-100);">
+          <div style="height:24px; border-radius:6px; background:var(--mint-500); margin-bottom:4px;"></div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">--mint-500</div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-700);">#4FAE73</div>
+        </div>
+        <div style="padding:8px; border-radius:10px; background:var(--surface); border:1px solid var(--ink-100);">
+          <div style="height:24px; border-radius:6px; background:var(--sky-300); margin-bottom:4px;"></div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">--sky-300</div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-700);">#8FBFD4</div>
+        </div>
+        <div style="padding:8px; border-radius:10px; background:var(--surface); border:1px solid var(--ink-100);">
+          <div style="height:24px; border-radius:6px; background:var(--ink-900); margin-bottom:4px;"></div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">--ink-900</div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-700);">#0E2A35</div>
+        </div>
+        <div style="padding:8px; border-radius:10px; background:var(--surface); border:1px solid var(--ink-100);">
+          <div style="height:24px; border-radius:6px; background:var(--bg); border:1px solid var(--ink-100); margin-bottom:4px;"></div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">--bg</div>
+          <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-700);">#F4F8F6</div>
+        </div>
+      </div>
+      <h3 style="font-size:14px; margin-bottom:4mm;">Type</h3>
+      <div style="margin-bottom:6mm;">
+        <div style="font-family:var(--font-display); font-size:24px; font-weight:700; letter-spacing:-0.02em; line-height:1;">Manrope</div>
+        <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500); margin-top:2px;">Headings · 700/800</div>
+      </div>
+      <div style="margin-bottom:6mm;">
+        <div style="font-family:var(--font-body); font-size:18px;">Inter, calmly readable.</div>
+        <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500); margin-top:2px;">Body · 400/500/600</div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-mono); font-size:13px;">JetBrains Mono — meta</div>
+        <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500); margin-top:2px;">Labels, ticks, IDs</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 3: FORM WIZARD ============ -->
+<section class="page">
+  <div class="page-header">
+    <div class="brand">Verdant · Loan Approval App</div>
+    <div class="meta">03 · Application Wizard</div>
+  </div>
+  <div class="page-title">Application — 4-step wizard</div>
+  <div class="page-sub">Eleven model features grouped into four short steps. Sliders for ranges, chip groups for categoricals, and an info button on every label that opens a plain-English explanation sheet.</div>
+
+  <div class="grid-row" style="gap:8mm;">
+    <!-- Step 1 -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="padding:8px 14px 14px; display:flex; align-items:center; gap:8px;">
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+            <div class="progress-bar"><div style="width:25%"></div></div>
+            <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">1/4</div>
+          </div>
+          <div class="px" style="flex:1;">
+            <div class="step-eyebrow">Step 01 · About you</div>
+            <h2 style="margin-top:3px; margin-bottom:4px; font-size:17px;">Let's start with the basics.</h2>
+            <p style="margin-bottom:18px; font-size:11px;">This helps us understand your overall financial picture.</p>
+
+            <div class="field">
+              <div class="field-label"><span>Age</span><span class="info-btn">i</span></div>
+              <div class="slider-row"><span class="slider-value">28<span class="unit">yrs</span></span></div>
+              <div class="slider-track"><div class="fill" style="width:16%"></div><div class="thumb" style="left:16%"></div></div>
+              <div class="slider-ticks"><span>18</span><span>80</span></div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span>Home ownership</span><span class="info-btn">i</span></div>
+              <div class="chip-group">
+                <button class="chip">Rent</button>
+                <button class="chip active">Mortgage</button>
+                <button class="chip">Own</button>
+                <button class="chip">Other</button>
+              </div>
+            </div>
+          </div>
+          <div class="px" style="padding:10px 14px 16px;">
+            <button class="btn primary full">Continue</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">05 · Wizard</div>
+      <div class="caption-title">Step 1 — About you</div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="padding:8px 14px 14px; display:flex; align-items:center; gap:8px;">
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+            <div class="progress-bar"><div style="width:50%"></div></div>
+            <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">2/4</div>
+          </div>
+          <div class="px" style="flex:1;">
+            <div class="step-eyebrow">Step 02 · Your work</div>
+            <h2 style="margin-top:3px; margin-bottom:4px; font-size:17px;">Tell us about income.</h2>
+            <p style="margin-bottom:18px; font-size:11px;">Your income vs. the loan amount is one of the strongest signals.</p>
+
+            <div class="field">
+              <div class="field-label"><span>Annual income</span><span class="info-btn">i</span></div>
+              <div class="input-group">
+                <span class="input-prefix">$</span>
+                <input class="input with-prefix" value="65,000" />
+              </div>
+              <div class="hint">Before taxes, in US dollars.</div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span>Employment length</span><span class="info-btn">i</span></div>
+              <div class="slider-row"><span class="slider-value">4<span class="unit">years</span></span></div>
+              <div class="slider-track"><div class="fill" style="width:13%"></div><div class="thumb" style="left:13%"></div></div>
+              <div class="slider-ticks"><span>0</span><span>30+</span></div>
+            </div>
+          </div>
+          <div class="px" style="padding:10px 14px 16px;">
+            <button class="btn primary full">Continue</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">06 · Wizard</div>
+      <div class="caption-title">Step 2 — Income</div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="padding:8px 14px 14px; display:flex; align-items:center; gap:8px;">
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+            <div class="progress-bar"><div style="width:75%"></div></div>
+            <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">3/4</div>
+          </div>
+          <div class="px" style="flex:1;">
+            <div class="step-eyebrow">Step 03 · The loan</div>
+            <h2 style="margin-top:3px; margin-bottom:4px; font-size:17px;">What do you need?</h2>
+            <p style="margin-bottom:18px; font-size:11px;">Choose an amount and tell us what it's for.</p>
+
+            <div class="field">
+              <div class="field-label"><span>Loan amount</span><span class="info-btn">i</span></div>
+              <div class="slider-row">
+                <span class="slider-value">$10,000</span>
+                <span style="font-family:var(--font-mono); font-size:9px; color:var(--mint-700); font-weight:600;">15.4% of income</span>
+              </div>
+              <div class="slider-track"><div class="fill" style="width:19%"></div><div class="thumb" style="left:19%"></div></div>
+              <div class="slider-ticks"><span>$500</span><span>$50k</span></div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span>What's it for?</span><span class="info-btn">i</span></div>
+              <div class="chip-group">
+                <button class="chip active">Personal</button>
+                <button class="chip">Education</button>
+                <button class="chip">Medical</button>
+                <button class="chip">Business</button>
+                <button class="chip">Home Improve</button>
+                <button class="chip">Debt Consolidate</button>
+              </div>
+            </div>
+          </div>
+          <div class="px" style="padding:10px 14px 16px;">
+            <button class="btn primary full">Continue</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">07 · Wizard</div>
+      <div class="caption-title">Step 3 — The loan</div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div style="padding:8px 14px 14px; display:flex; align-items:center; gap:8px;">
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+            <div class="progress-bar"><div style="width:100%"></div></div>
+            <div style="font-family:var(--font-mono); font-size:9px; color:var(--ink-500);">4/4</div>
+          </div>
+          <div class="px" style="flex:1;">
+            <div class="step-eyebrow">Step 04 · Credit history</div>
+            <h2 style="margin-top:3px; margin-bottom:4px; font-size:17px;">Almost there.</h2>
+            <p style="margin-bottom:14px; font-size:11px;">Just two more questions about your credit history.</p>
+
+            <div class="field">
+              <div class="field-label"><span>Have you ever defaulted on a loan?</span><span class="info-btn">i</span></div>
+              <div class="toggle">
+                <button class="active">No, never</button>
+                <button>Yes</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label"><span>Credit history length</span><span class="info-btn">i</span></div>
+              <div class="slider-row"><span class="slider-value">6<span class="unit">years</span></span></div>
+              <div class="slider-track"><div class="fill" style="width:20%"></div><div class="thumb" style="left:20%"></div></div>
+              <div class="slider-ticks"><span>0</span><span>30+</span></div>
+            </div>
+
+            <div style="margin-top:14px; padding:11px; background:var(--sky-50); border-radius:12px; border:1px solid var(--sky-100); display:flex; gap:8px;">
+              <div style="width:22px; height:22px; border-radius:7px; background:var(--sky-200); color:var(--ink-900); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg>
+              </div>
+              <div>
+                <div style="font-weight:600; font-size:11px; margin-bottom:1px;">You're all set</div>
+                <div style="font-size:9px; color:var(--ink-500);">Tap submit to run your application through our scoring model.</div>
+              </div>
+            </div>
+          </div>
+          <div class="px" style="padding:10px 14px 16px;">
+            <button class="btn primary full">Submit application</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">08 · Wizard</div>
+      <div class="caption-title">Step 4 — Credit history</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 4: PROCESSING + RESULT ============ -->
+<section class="page">
+  <div class="page-header">
+    <div class="brand">Verdant · Loan Approval App</div>
+    <div class="meta">04 · Decision</div>
+  </div>
+  <div class="page-title">Processing → Decision</div>
+  <div class="page-sub">A short, confidence-building processing screen narrates what the model is doing. The result animates a celebratory checkmark, lands on a trust-score ring with grade, and breaks down each feature's positive or negative contribution to the decision.</div>
+
+  <div class="grid-row" style="gap:10mm; justify-content:center;">
+    <!-- Processing -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen" style="align-items:center; justify-content:center; padding:24px;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div class="pulse-ring" style="margin-bottom:24px;">
+              <div class="core">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4v6c0 5.5-4 9.5-9 10-5-.5-9-4.5-9-10V6l9-4z"/><path d="M8.5 12l2.5 2.5L16 9.5"/></svg>
+              </div>
+            </div>
+            <h2 style="margin-bottom:8px; text-align:center;">Reviewing your application…</h2>
+            <p style="text-align:center; max-width:200px; margin-bottom:20px; font-size:11px;">We're checking your information against our model.</p>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:10px; color:var(--mint-700);">
+                <div style="width:11px; height:11px; border-radius:999px; background:var(--mint-100); display:flex; align-items:center; justify-content:center;"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="var(--mint-700)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></div>
+                <span>Encrypting your data</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:10px; color:var(--mint-700);">
+                <div style="width:11px; height:11px; border-radius:999px; background:var(--mint-100); display:flex; align-items:center; justify-content:center;"><svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="var(--mint-700)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4L19 6"/></svg></div>
+                <span>Running risk model</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:10px; color:var(--ink-500);">
+                <div style="width:11px; height:11px; border-radius:999px; border:1.5px solid var(--mint-500); border-top-color:transparent;"></div>
+                <span>Calibrating decision</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:10px; color:var(--ink-500); opacity:0.4;">
+                <div style="width:11px; height:11px; border-radius:999px; background:var(--ink-100);"></div>
+                <span>Almost done</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">09 · Decision</div>
+      <div class="caption-title">Processing</div>
+    </div>
+
+    <!-- Result Approved -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div class="px" style="padding-top:16px; padding-bottom:14px; text-align:center; display:flex; flex-direction:column; align-items:center;">
+            <div class="check-circle">
+              <svg viewBox="0 0 56 56"><path d="M14 28 L24 38 L42 18"/></svg>
+            </div>
+            <h1 style="margin-top:14px; margin-bottom:4px; font-size:22px;">Approved!</h1>
+            <p style="font-size:11px; max-width:200px;">Your $10,000 personal loan is ready.</p>
+          </div>
+          <div class="px" style="margin-bottom:10px;">
+            <div class="card" style="padding:14px; display:flex; align-items:center; gap:12px;">
+              <div class="score-ring-wrap">
+                <svg viewBox="0 0 180 180">
+                  <circle cx="90" cy="90" r="72" fill="none" stroke="var(--ink-100)" stroke-width="10"/>
+                  <circle cx="90" cy="90" r="72" fill="none" stroke="var(--mint-500)" stroke-width="10" stroke-linecap="round" stroke-dasharray="362 452"/>
+                </svg>
+                <div class="score-text">
+                  <div class="score-num">80</div>
+                  <div class="score-label">Trust score</div>
+                </div>
+              </div>
+              <div style="flex:1;">
+                <div style="font-family:var(--font-mono); font-size:8px; color:var(--ink-400); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:5px;">Loan grade</div>
+                <div style="font-family:var(--font-display); font-size:34px; font-weight:800; line-height:1; letter-spacing:-0.04em;">B</div>
+                <div style="font-size:10px; color:var(--ink-500); margin-top:3px;">Strong reliability</div>
+              </div>
+            </div>
+          </div>
+          <div class="px" style="display:flex; gap:6px; margin-bottom:10px;">
+            <div class="stat-tile">
+              <div class="label">Rate</div>
+              <div class="value">9.1%</div>
+              <div class="sub">APR</div>
+            </div>
+            <div class="stat-tile">
+              <div class="label">Monthly</div>
+              <div class="value">$303</div>
+              <div class="sub">36 months</div>
+            </div>
+            <div class="stat-tile">
+              <div class="label">Total</div>
+              <div class="value">$10,910</div>
+              <div class="sub">payback</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">10 · Decision</div>
+      <div class="caption-title">Result — Approved</div>
+    </div>
+
+    <!-- Risk breakdown detail -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div class="px" style="padding-top:14px; padding-bottom:8px;">
+            <div class="card" style="padding:6px 14px 8px;">
+              <div style="padding:10px 0 6px; border-bottom:1px solid var(--ink-100);">
+                <h3 style="font-size:12px;">What influenced this decision</h3>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">Loan-to-income ratio</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">Loan is 15% of income — very safe</div>
+                </div>
+                <div class="risk-bar"><div style="width:72%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+18</div>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">Employment stability</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">4 years at current job</div>
+                </div>
+                <div class="risk-bar"><div style="width:16%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+4</div>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">No past defaults</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">Clean repayment record</div>
+                </div>
+                <div class="risk-bar"><div style="width:32%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+8</div>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">Credit history length</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">6 years of credit data</div>
+                </div>
+                <div class="risk-bar"><div style="width:12%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+3</div>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">Home ownership</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">Has a mortgage</div>
+                </div>
+                <div class="risk-bar"><div style="width:12%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+3</div>
+              </div>
+              <div class="risk-row">
+                <div style="flex:1;">
+                  <div class="risk-name">Age</div>
+                  <div style="font-size:9px; color:var(--ink-500); margin-top:1px;">Within typical lending range</div>
+                </div>
+                <div class="risk-bar"><div style="width:8%; background:var(--mint-500);"></div></div>
+                <div class="risk-impact impact-pos">+2</div>
+              </div>
+            </div>
+          </div>
+          <div class="px" style="margin-bottom:8px;">
+            <div style="display:flex; gap:7px; padding:9px; background:var(--sky-50); border:1px solid var(--sky-100); border-radius:11px; font-size:9px; color:var(--ink-500); line-height:1.45;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>
+              <span>This is a preliminary estimate from our scoring model. Final terms may vary after a soft credit check. No hard inquiry was made.</span>
+            </div>
+          </div>
+          <div class="px" style="padding-bottom:14px; display:flex; flex-direction:column; gap:5px;">
+            <button class="btn primary full">Accept offer</button>
+            <button class="btn ghost full">Save for later</button>
+          </div>
+        </div>
+      </div>
+      <div class="caption">11 · Decision</div>
+      <div class="caption-title">Per-feature risk breakdown</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE 5: HISTORY + PROFILE ============ -->
+<section class="page">
+  <div class="page-header">
+    <div class="brand">Verdant · Loan Approval App</div>
+    <div class="meta">05 · Account</div>
+  </div>
+  <div class="page-title">History &amp; Profile</div>
+  <div class="page-sub">Two of the three primary tabs. History is filterable; Profile collects identity, security, and preference settings under a single calm list pattern.</div>
+
+  <div class="grid-row" style="gap:14mm; justify-content:center;">
+    <!-- History -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div class="topbar">
+            <h2>History</h2>
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></div>
+          </div>
+
+          <div class="px" style="padding-bottom:10px; display:flex; gap:5px;">
+            <button style="height:24px; padding:0 11px; border-radius:999px; border:1.2px solid var(--ink-900); background:var(--ink-900); color:#fff; font-family:var(--font-display); font-weight:600; font-size:10px;">All</button>
+            <button style="height:24px; padding:0 11px; border-radius:999px; border:1.2px solid var(--ink-100); background:var(--surface); color:var(--ink-700); font-family:var(--font-display); font-weight:600; font-size:10px;">Approved</button>
+            <button style="height:24px; padding:0 11px; border-radius:999px; border:1.2px solid var(--ink-100); background:var(--surface); color:var(--ink-700); font-family:var(--font-display); font-weight:600; font-size:10px;">In review</button>
+            <button style="height:24px; padding:0 11px; border-radius:999px; border:1.2px solid var(--ink-100); background:var(--surface); color:var(--ink-700); font-family:var(--font-display); font-weight:600; font-size:10px;">Rejected</button>
+          </div>
+
+          <div class="px" style="display:flex; flex-direction:column; gap:7px;">
+            <div class="history-item">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                  <div style="font-family:var(--font-display); font-weight:700; font-size:13px;">$12,000</div>
+                  <span class="badge approved">Approved</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                  <span>Debt Consolidate · Grade B</span>
+                  <span style="font-family:var(--font-mono);">Apr 18, 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="history-item">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                  <div style="font-family:var(--font-display); font-weight:700; font-size:13px;">$4,500</div>
+                  <span class="badge approved">Approved</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                  <span>Medical · Grade A</span>
+                  <span style="font-family:var(--font-mono);">Mar 2, 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="history-item">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                  <div style="font-family:var(--font-display); font-weight:700; font-size:13px;">$22,000</div>
+                  <span class="badge rejected">Rejected</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                  <span>Business · Grade D</span>
+                  <span style="font-family:var(--font-mono);">Nov 12, 2025</span>
+                </div>
+              </div>
+            </div>
+            <div class="history-item">
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                  <div style="font-family:var(--font-display); font-weight:700; font-size:13px;">$8,000</div>
+                  <span class="badge review">In review</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--ink-500);">
+                  <span>Home Improve · Grade C</span>
+                  <span style="font-family:var(--font-mono);">Aug 24, 2025</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a2 2 0 01-2 2h-3v-6h-6v6H6a2 2 0 01-2-2v-9z"/></svg><span>Home</span></div>
+          <div class="tab active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.5"/><path d="M3 4v4h4M12 7v5l3 2"/></svg><span>History</span></div>
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="caption">12 · Tabs</div>
+      <div class="caption-title">History — filterable list</div>
+    </div>
+
+    <!-- Profile -->
+    <div class="phone-col">
+      <div class="phone">
+        <div class="status-bar"><span>9:41</span><div class="right"><svg width="20" height="9" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" opacity="0.5"/><rect x="2" y="2" width="17" height="8" rx="1.5" fill="currentColor"/></svg></div></div>
+        <div class="screen">
+          <div class="topbar">
+            <h2>Profile</h2>
+            <div class="iconbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/></svg></div>
+          </div>
+          <div class="px" style="padding-top:6px; padding-bottom:14px; display:flex; flex-direction:column; align-items:center;">
+            <div class="avatar" style="margin-bottom:9px;">AC</div>
+            <div style="font-family:var(--font-display); font-size:14px; font-weight:700; margin-bottom:1px;">Amelia Chen</div>
+            <div style="font-size:10px; color:var(--ink-500);">Member since Mar 2025</div>
+            <div style="display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:3px 9px; background:var(--mint-100); color:var(--mint-700); border-radius:999px; font-family:var(--font-display); font-size:9px; font-weight:600;">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4v6c0 5.5-4 9.5-9 10-5-.5-9-4.5-9-10V6l9-4z"/></svg>
+              Verified identity
+            </div>
+          </div>
+
+          <div class="px" style="display:flex; flex-direction:column; gap:11px;">
+            <div>
+              <div style="font-family:var(--font-mono); font-size:8px; color:var(--ink-400); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:5px; padding-left:3px;">Account</div>
+              <div class="card" style="padding:0; overflow:hidden;">
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg></div>
+                  <div class="row-label">Personal info</div>
+                  <div class="row-value">Amelia Chen</div>
+                </div>
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 11h20M6 16h4"/></svg></div>
+                  <div class="row-label">Linked accounts</div>
+                  <div class="row-value">2 banks</div>
+                </div>
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"/><path d="M14 3v6h6"/></svg></div>
+                  <div class="row-label">Documents</div>
+                  <div class="row-value">3 files</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono); font-size:8px; color:var(--ink-400); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:5px; padding-left:3px;">Security</div>
+              <div class="card" style="padding:0; overflow:hidden;">
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12a7 7 0 0114 0M7 16c0-3 2-5 5-5s5 2 5 5M9 19c0-1.5.5-3 3-3s3 1.5 3 3M12 12v7"/></svg></div>
+                  <div class="row-label">Biometric login</div>
+                  <div class="row-value">On</div>
+                </div>
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></div>
+                  <div class="row-label">Change passcode</div>
+                </div>
+                <div class="row">
+                  <div class="row-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/></svg></div>
+                  <div class="row-label">Privacy settings</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v9a2 2 0 01-2 2h-3v-6h-6v6H6a2 2 0 01-2-2v-9z"/></svg><span>Home</span></div>
+          <div class="tab"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.5"/><path d="M3 4v4h4M12 7v5l3 2"/></svg><span>History</span></div>
+          <div class="tab active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg><span>Profile</span></div>
+        </div>
+      </div>
+      <div class="caption">13 · Tabs</div>
+      <div class="caption-title">Profile — settings list</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Auto-print after fonts and layout settle
+  (async () => {
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (e) {}
+    }
+    setTimeout(() => { window.print(); }, 600);
+  })();
+</script>
+</body>
+</html>
