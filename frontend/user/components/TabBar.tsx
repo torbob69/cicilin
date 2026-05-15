@@ -1,119 +1,113 @@
-import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { BlurView } from 'expo-blur';
-import { Feather } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '../constants/colors';
+import React from "react";
+import { View, TouchableOpacity, Text, Platform } from "react-native";
+import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, { useAnimatedStyle, withSpring, useSharedValue } from "react-native-reanimated";
+import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
 
-const TAB_ICONS: Record<string, keyof typeof Feather.glyphMap> = {
-  index: 'home',
-  apply: 'plus',
-  status: 'bar-chart-2',
-  quests: 'refresh-cw',
-  profile: 'user',
+type IconName = React.ComponentProps<typeof Ionicons>["name"];
+
+const TAB_CONFIG: Record<string, { icon: IconName; iconActive: IconName; label: string }> = {
+  index: { icon: "home-outline", iconActive: "home", label: "Home" },
+  status: { icon: "receipt-outline", iconActive: "receipt", label: "Status" },
+  apply: { icon: "add", iconActive: "add", label: "" },
+  quests: { icon: "star-outline", iconActive: "star", label: "Quest" },
+  profile: { icon: "person-outline", iconActive: "person", label: "Profil" },
 };
 
-export default function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets();
+function TabItem({
+  route,
+  active,
+  onPress,
+}: {
+  route: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const cfg = TAB_CONFIG[route];
+  const isCenter = route === "apply";
+
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePress = () => {
+    scale.value = withSpring(0.85, { damping: 15 }, () => {
+      scale.value = withSpring(1, { damping: 15 });
+    });
+    onPress();
+  };
+
+  if (isCenter) {
+    return (
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.9} className="items-center justify-center">
+        <Animated.View
+          style={[animStyle, { width: 48, height: 48, borderRadius: 24 }]}
+          className="bg-primary items-center justify-center"
+        >
+          <Ionicons name="add" size={32} color="#0e0f0c" />
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <View style={[styles.wrapper, { bottom: Math.max(insets.bottom, 16) }]}>
-      <BlurView intensity={60} tint="dark" style={styles.blur}>
-        <View style={styles.inner}>
-          {state.routes.map((route, index) => {
-            const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
-            const iconName = TAB_ICONS[route.name] || 'circle';
-
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
-
-            const isHome = route.name === 'index';
-
-            return (
-              <TouchableOpacity
-                key={route.key}
-                onPress={onPress}
-                style={styles.tab}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={[
-                    styles.iconWrap,
-                    isFocused && styles.iconWrapActive,
-                    isHome && isFocused && styles.homeActiveWrap,
-                  ]}
-                >
-                  <Feather
-                    name={iconName}
-                    size={22}
-                    color={isFocused ? Colors.green : '#a7a7a7'}
-                  />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </BlurView>
-    </View>
+    <TouchableOpacity
+      onPress={handlePress}
+      activeOpacity={0.7}
+      className="flex-1 items-center justify-center py-sm gap-xxs"
+    >
+      <Animated.View style={animStyle} className="items-center">
+        <Ionicons
+          name={active ? cfg.iconActive : cfg.icon}
+          size={22}
+          color={active ? "#9fe870" : "#868685"}
+        />
+      </Animated.View>
+    </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    left: 24,
-    right: 24,
-    borderRadius: 999,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 20,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  blur: {
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  inner: {
-    flexDirection: 'row',
-    height: 70,
-    alignItems: 'center',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(40,39,39,0.95)' : 'rgba(40,39,39,0.34)',
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-  },
-  iconWrap: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
-  },
-  iconWrapActive: {
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  homeActiveWrap: {
-    backgroundColor: Colors.greenGlass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-});
+export function TabBar({ state, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      className="absolute bottom-0 left-0 right-0"
+    >
+      <View
+        style={{
+          borderTopWidth: 1,
+          borderTopColor: "rgba(255,255,255,0.06)",
+          backgroundColor: "#080a07",
+        }}
+      >
+        <View className="flex-row items-center px-sm pt-sm" style={{ height: 60 }}>
+          {state.routes.map((route, idx) => {
+            if (!TAB_CONFIG[route.name]) return null;
+            const active = state.index === idx;
+            return (
+              <TabItem
+                key={route.key}
+                route={route.name}
+                active={active}
+                onPress={() => {
+                  const event = navigation.emit({
+                    type: "tabPress",
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
+                  if (!active && !event.defaultPrevented) {
+                    navigation.navigate(route.name);
+                  }
+                }}
+              />
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}

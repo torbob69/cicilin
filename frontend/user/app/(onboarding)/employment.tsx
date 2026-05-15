@@ -1,158 +1,142 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { userAPI } from '../../services/api';
-import { Colors } from '../../constants/colors';
-
-const HOME_OPTIONS = [
-  { label: 'Sewa', value: 'RENT' },
-  { label: 'Milik Sendiri', value: 'OWN' },
-  { label: 'KPR', value: 'MORTGAGE' },
-  { label: 'Lainnya', value: 'OTHER' },
-];
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { userService } from "@/services/users";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
 
 export default function EmploymentScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { toast, show, hide } = useToast();
+
   const [form, setForm] = useState({
-    occupation: '',
-    employer_name: '',
-    job_title: '',
-    emp_length: '',
-    annual_income: '',
-    home_ownership: '',
+    occupation: "",
+    employer_name: "",
+    job_title: "",
+    emp_length: "",
+    annual_income: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Partial<typeof form>>({});
 
-  function update(field: keyof typeof form, val: string) {
-    setForm((f) => ({ ...f, [field]: val }));
-  }
+  const set = (key: keyof typeof form) => (val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
 
-  async function handleSubmit() {
-    if (!form.occupation || !form.annual_income || !form.emp_length) {
-      setError('Pekerjaan, penghasilan, dan lama bekerja wajib diisi');
-      return;
-    }
-    setError('');
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!form.occupation.trim()) e.occupation = "Pekerjaan wajib diisi";
+    if (!form.employer_name.trim()) e.employer_name = "Nama perusahaan wajib diisi";
+    if (!form.job_title.trim()) e.job_title = "Jabatan wajib diisi";
+    if (isNaN(Number(form.emp_length)) || Number(form.emp_length) < 0)
+      e.emp_length = "Masukkan tahun yang valid";
+    if (isNaN(Number(form.annual_income)) || Number(form.annual_income) <= 0)
+      e.annual_income = "Masukkan penghasilan tahunan yang valid (IDR)";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleNext = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
-      await userAPI.upsertEmployment({
-        occupation: form.occupation,
-        employer_name: form.employer_name || undefined,
-        job_title: form.job_title || undefined,
-        emp_length: parseFloat(form.emp_length),
-        annual_income: parseFloat(form.annual_income.replace(/\D/g, '')),
+      await userService.updateEmployment({
+        occupation: form.occupation.trim(),
+        employer_name: form.employer_name.trim(),
+        job_title: form.job_title.trim(),
+        emp_length: Number(form.emp_length),
+        annual_income: Number(form.annual_income),
       });
-      if (form.home_ownership) {
-        await userAPI.updateMe({ home_ownership: form.home_ownership });
-      }
-      router.push('/(onboarding)/bank-account');
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Gagal menyimpan. Coba lagi.');
+      router.push("/(onboarding)/bank-account");
+    } catch (err: any) {
+      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="chevron-left" size={22} color={Colors.green} />
-          </TouchableOpacity>
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mb-xl">
+          <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
+        </TouchableOpacity>
 
-          <Text style={styles.title}>Info pekerjaan kamu</Text>
-          <Text style={styles.subtitle}>Diperlukan untuk penilaian pinjaman</Text>
-
-          {[
-            { label: 'Pekerjaan *', field: 'occupation' as const, placeholder: 'cth: Karyawan Swasta' },
-            { label: 'Nama Perusahaan', field: 'employer_name' as const, placeholder: 'cth: PT. Contoh Indonesia' },
-            { label: 'Jabatan', field: 'job_title' as const, placeholder: 'cth: Software Engineer' },
-            { label: 'Lama Bekerja (tahun) *', field: 'emp_length' as const, placeholder: 'cth: 3', numeric: true },
-            { label: 'Penghasilan per Tahun (IDR) *', field: 'annual_income' as const, placeholder: 'cth: 60000000', numeric: true },
-          ].map(({ label, field, placeholder, numeric }) => (
-            <View key={field}>
-              <Text style={styles.label}>{label}</Text>
-              <View style={styles.inputWrap}>
-                <TextInput
-                  style={styles.input}
-                  placeholder={placeholder}
-                  placeholderTextColor={Colors.gray}
-                  value={form[field]}
-                  onChangeText={(v) => update(field, v)}
-                  keyboardType={numeric ? 'numeric' : 'default'}
-                />
-              </View>
-            </View>
+        {/* Step indicator */}
+        <View className="flex-row gap-xs mb-2xl">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <View
+              key={s}
+              className={`h-1 flex-1 rounded-pill ${s <= 2 ? "bg-ink" : "bg-ink/20"}`}
+            />
           ))}
+        </View>
 
-          <Text style={styles.label}>Status Tempat Tinggal</Text>
-          <View style={styles.optionsRow}>
-            {HOME_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.optPill, form.home_ownership === opt.value && styles.optPillSelected]}
-                onPress={() => update('home_ownership', opt.value)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.optPillText, form.home_ownership === opt.value && styles.optPillTextSelected]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        <Text className="text-2xl font-sans-black text-ink mb-xs">Pekerjaan</Text>
+        <Text className="text-sm text-body mb-2xl">Langkah 2 dari 5 — Verifikasi penghasilan</Text>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View className="gap-lg">
+          <Input
+            label="Pekerjaan"
+            placeholder="cth. Software Engineer"
+            value={form.occupation}
+            onChangeText={set("occupation")}
+            error={errors.occupation}
+          />
+          <Input
+            label="Nama Perusahaan"
+            placeholder="PT. Contoh Indonesia"
+            value={form.employer_name}
+            onChangeText={set("employer_name")}
+            error={errors.employer_name}
+          />
+          <Input
+            label="Jabatan"
+            placeholder="cth. Senior Developer"
+            value={form.job_title}
+            onChangeText={set("job_title")}
+            error={errors.job_title}
+          />
+          <Input
+            label="Lama Bekerja (tahun)"
+            placeholder="cth. 3"
+            keyboardType="decimal-pad"
+            value={form.emp_length}
+            onChangeText={set("emp_length")}
+            error={errors.emp_length}
+          />
+          <Input
+            label="Penghasilan Tahunan (IDR)"
+            placeholder="cth. 72000000"
+            keyboardType="number-pad"
+            value={form.annual_income}
+            onChangeText={set("annual_income")}
+            error={errors.annual_income}
+            hint="Penghasilan kotor sebelum pajak"
+          />
+        </View>
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Lanjut</Text>}
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        <Button label="Lanjut" loading={loading} onPress={handleNext} className="mt-2xl" />
+      </ScrollView>
+
+      <Toast {...toast} onHide={hide} />
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  container: { padding: 24, paddingTop: 60, paddingBottom: 40 },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.greenBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 28,
-  },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 28 },
-  label: { color: Colors.grayLight, fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  inputWrap: {
-    backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 14, height: 52, justifyContent: 'center',
-  },
-  input: { color: Colors.white, fontSize: 15 },
-  optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  optPill: {
-    borderWidth: 1.5, borderColor: Colors.border, borderRadius: 999,
-    paddingHorizontal: 16, paddingVertical: 8, backgroundColor: Colors.surface,
-  },
-  optPillSelected: { borderColor: Colors.green, backgroundColor: Colors.greenGlow },
-  optPillText: { color: Colors.gray, fontSize: 14, fontWeight: '600' },
-  optPillTextSelected: { color: Colors.green },
-  errorText: { color: Colors.red, fontSize: 13, marginTop: 12 },
-  btn: {
-    backgroundColor: Colors.green, borderRadius: 999, height: 52,
-    alignItems: 'center', justifyContent: 'center', marginTop: 24,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-});

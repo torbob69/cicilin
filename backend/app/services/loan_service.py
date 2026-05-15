@@ -297,18 +297,16 @@ def accept_offer(db: Session, user: User, loan_id: int, data: AcceptOfferRequest
     loan.loan_status  = "disbursed"
     loan.disbursed_at = now
 
-    # Generate repayment schedule
-    monthly_amt = float(loan.monthly_installment)
-    base_date   = now.date()
-    for i in range(1, loan.tenure_months + 1):
-        due = base_date + relativedelta(months=i)
-        db.add(Repayment(
-            loan_id=loan.id,
-            installment_number=i,
-            due_date=due,
-            amount=monthly_amt,
-            status="pending",
-        ))
+    # Single lump-sum repayment due at end of tenor
+    total_repayment = round(float(loan.monthly_installment) * loan.tenure_months, 2)
+    due_date = now.date() + relativedelta(months=loan.tenure_months)
+    db.add(Repayment(
+        loan_id=loan.id,
+        installment_number=1,
+        due_date=due_date,
+        amount=total_repayment,
+        status="pending",
+    ))
 
     db.commit()
     loan = (

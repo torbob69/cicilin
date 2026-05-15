@@ -46,7 +46,7 @@ def get_profile(user: User) -> UserProfileResponse:
     return UserProfileResponse.model_validate(user)
 
 
-_ALLOWED_PROFILE_FIELDS = {"address", "home_ownership", "cb_person_cred_hist_length"}
+_ALLOWED_PROFILE_FIELDS = {"full_name", "nik", "date_of_birth", "address", "home_ownership", "cb_person_cred_hist_length"}
 
 def update_profile(db: Session, user: User, data: ProfileUpdateRequest) -> UserProfileResponse:
     for key, value in data.model_dump(exclude_none=True).items():
@@ -92,6 +92,13 @@ def upload_kyc_document(
 
 
 # ── Employment ────────────────────────────────────────────────────────────────
+
+def get_employment(db: Session, user: User) -> EmploymentResponse:
+    emp = db.query(UserEmployment).filter(UserEmployment.user_id == user.id).first()
+    if not emp:
+        return EmploymentResponse(occupation=None, employer_name=None, job_title=None, emp_length=None, annual_income=None)
+    return EmploymentResponse.model_validate(emp)
+
 
 def upsert_employment(
     db: Session, user: User, data: EmploymentUpsertRequest

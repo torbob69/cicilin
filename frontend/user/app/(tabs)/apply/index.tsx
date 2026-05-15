@@ -1,176 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, ActivityIndicator, Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { userAPI } from '../../../services/api';
-import { useLoanStore } from '../../../store/loan';
-import { Colors } from '../../../constants/colors';
-import { formatIDR, RANK_LOAN_LIMITS } from '../../../constants/helpers';
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuthStore } from "@/store/auth";
+import { Button } from "@/components/ui/Button";
+import { LOAN_INTENTS, RANK_LIMIT } from "@/constants/config";
+import { Ionicons } from "@expo/vector-icons";
 
-function GlassCircle({ children, size = 50 }: { children: React.ReactNode; size?: number }) {
-  if (Platform.OS === 'ios') {
-    return (
-      <BlurView
-        intensity={14}
-        tint="dark"
-        style={[
-          styles.glassCircleBlur,
-          { width: size, height: size, borderRadius: size / 2 },
-        ]}
-      >
-        <View style={styles.glassCircleOverlay}>{children}</View>
-      </BlurView>
-    );
-  }
-  return (
-    <View
-      style={[
-        styles.glassCircleAndroid,
-        { width: size, height: size, borderRadius: size / 2 },
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+const INTENT_ICON: Record<string, IoniconName> = {
+  EDUCATION:         "school-outline",
+  MEDICAL:           "medkit-outline",
+  VENTURE:           "business-outline",
+  PERSONAL:          "person-outline",
+  DEBTCONSOLIDATION: "refresh-outline",
+  HOMEIMPROVEMENT:   "home-outline",
+};
 
 export default function ApplyAmountScreen() {
   const router = useRouter();
-  const { setAmount } = useLoanStore();
-  const [value, setValue] = useState('');
-  const [rank, setRank] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
 
-  useEffect(() => {
-    userAPI.getRank().then((r) => { setRank(r.data); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+  const rank = user?.rank ?? "Gold";
+  const limit = RANK_LIMIT[rank] ?? 0;
 
-  const limit = rank ? RANK_LOAN_LIMITS[rank.rank] ?? 0 : 0;
-  const numVal = parseInt(value.replace(/\D/g, ''), 10) || 0;
+  const [rawAmount, setRawAmount] = useState("");
+  const [intent, setIntent] = useState("");
+  const [errors, setErrors] = useState<{ amount?: string; intent?: string }>({});
 
-  function formatInput(raw: string) {
-    const digits = raw.replace(/\D/g, '');
-    setValue(digits ? parseInt(digits).toLocaleString('id-ID') : '');
-  }
+  // Reset form every time this screen comes into focus (fresh apply flow)
+  useFocusEffect(
+    useCallback(() => {
+      setRawAmount("");
+      setIntent("");
+      setErrors({});
+    }, [])
+  );
 
-  function handleNext() {
-    if (numVal < 500000) { setError('Minimal pinjaman Rp 500.000'); return; }
-    if (numVal > limit) { setError(`Melebihi limit bulanan kamu (${formatIDR(limit)})`); return; }
-    setError('');
-    setAmount(numVal);
-    router.push('/(tabs)/apply/intent');
-  }
+  const numericAmount = Number(rawAmount.replace(/\./g, ""));
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator color={Colors.green} />
-      </SafeAreaView>
-    );
-  }
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!numericAmount || numericAmount < 100_000) e.amount = "Minimal Rp 100.000";
+    else if (numericAmount > limit) e.amount = `Melebihi limit Rp ${limit.toLocaleString("id-ID")}`;
+    if (!intent) e.intent = "Pilih tujuan pinjaman";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleNext = () => {
+    if (!validate()) return;
+    router.push({ pathname: "/(tabs)/apply/tenure", params: { amount: String(numericAmount), intent } });
+  };
+
+  const handleAmountChange = (val: string) => {
+    const digits = val.replace(/\D/g, "");
+    if (!digits) { setRawAmount(""); return; }
+    setRawAmount(Number(digits).toLocaleString("id-ID"));
+  };
+
+  const pct = limit > 0 ? Math.min(numericAmount / limit, 1) : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.container}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtnWrap} activeOpacity={0.8}>
-            <GlassCircle size={50}>
-              <Feather name="chevron-left" size={22} color={Colors.green} />
-            </GlassCircle>
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 120 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View className="flex-row items-center justify-between mb-2xl">
+          <TouchableOpacity onPress={() => router.back()} className="p-sm -ml-sm">
+            <Ionicons name="close" size={22} color="#e8ebe6" />
           </TouchableOpacity>
+          <View className="flex-row gap-xs">
+            {[1, 2, 3].map((s) => (
+              <View key={s} className={`h-1 w-8 rounded-pill ${s === 1 ? "bg-primary" : "bg-white/20"}`} />
+            ))}
+          </View>
+          <View className="w-8" />
+        </View>
 
-          <Text style={styles.title}>Mau pinjam berapa?</Text>
-          <Text style={styles.subtitle}>masukkin jumlah uang yang sesuai dengan kebutuhan ya</Text>
+        <Text className="text-2xl font-sans-black text-ink mb-xs">Jumlah Pinjaman</Text>
+        <Text className="text-sm text-mute mb-2xl">
+          Limit kamu: <Text className="font-sans-semibold text-ink">Rp {limit.toLocaleString("id-ID")}</Text> ({rank})
+        </Text>
 
-          {rank && (
-            <View style={styles.limitInfo}>
-              <Text style={styles.limitInfoText}>
-                Limit kamu: <Text style={{ color: Colors.green, fontWeight: '700' }}>{formatIDR(limit)}</Text>
-                {' '}· Bunga {rank.interest_rate}% p.a.
+        {/* Amount input */}
+        <View className="mb-xl">
+          <View className={`bg-canvas rounded-xl border-2 px-xl py-lg flex-row items-center ${
+            errors.amount ? "border-negative" : numericAmount ? "border-ink" : "border-ink/20"
+          }`}>
+            <Text className="text-xl font-sans-semibold text-mute mr-sm">Rp</Text>
+            <TextInput
+              className="flex-1 text-2xl font-sans-black text-ink"
+              placeholder="0"
+              placeholderTextColor="#868685"
+              keyboardType="number-pad"
+              value={rawAmount}
+              onChangeText={handleAmountChange}
+            />
+          </View>
+          {errors.amount ? (
+            <Text className="text-xs text-negative mt-xs">{errors.amount}</Text>
+          ) : numericAmount > 0 && (
+            <View className="mt-sm gap-xs">
+              <View className="h-1.5 bg-ink/10 rounded-pill overflow-hidden">
+                <View style={{ width: `${pct * 100}%` }} className="h-full bg-primary rounded-pill" />
+              </View>
+              <Text className="text-xs text-mute">
+                {(pct * 100).toFixed(0)}% dari limit bulananmu
               </Text>
             </View>
           )}
-
-          <View style={styles.inputWrap}>
-            <Text style={styles.prefix}>Rp</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="0"
-              placeholderTextColor={Colors.gray}
-              value={value}
-              onChangeText={formatInput}
-              keyboardType="numeric"
-              autoFocus
-            />
-          </View>
-
-          <Text style={styles.hint}>*minimal Rp 500.000</Text>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.btn, numVal < 500000 && styles.btnDisabled]}
-            onPress={handleNext}
-            disabled={numVal < 500000}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnText}>Lanjut</Text>
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+        {/* Intent */}
+        <Text className="text-sm font-sans-semibold text-ink mb-sm">Tujuan Pinjaman</Text>
+        <View className="flex-row flex-wrap gap-sm mb-xs">
+          {LOAN_INTENTS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => { setIntent(opt.value); setErrors((e) => ({ ...e, intent: undefined })); }}
+              activeOpacity={0.8}
+              className={`flex-row items-center gap-sm px-lg py-md rounded-xl border ${
+                intent === opt.value ? "bg-canvas border-primary" : "bg-canvas border-white/[0.06]"
+              }`}
+            >
+              <Ionicons
+                name={INTENT_ICON[opt.value] ?? "ellipse-outline"}
+                size={16}
+                color={intent === opt.value ? "#9fe870" : "#525550"}
+              />
+              <Text className={`text-sm font-sans-semibold ${intent === opt.value ? "text-primary" : "text-mute"}`}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {errors.intent && <Text className="text-xs text-negative mb-md">{errors.intent}</Text>}
+
+        <Button label="Lanjut" onPress={handleNext} className="mt-lg" />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  container: { flex: 1, padding: 24, paddingTop: 60, paddingBottom: 110 },
-
-  glassCircleBlur: {
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.glassBorder, overflow: 'hidden',
-  },
-  glassCircleOverlay: {
-    flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.glass,
-  },
-  glassCircleAndroid: {
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.glass,
-    borderWidth: 1, borderColor: Colors.glassBorder,
-  },
-
-  backBtnWrap: { marginBottom: 28, alignSelf: 'flex-start' },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 20, lineHeight: 22 },
-  limitInfo: {
-    backgroundColor: Colors.greenGlow, borderRadius: 12, padding: 12,
-    borderWidth: 1, borderColor: Colors.greenBorder, marginBottom: 24,
-  },
-  limitInfoText: { color: Colors.grayLight, fontSize: 13 },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.glass,
-    borderRadius: 999, borderWidth: 1, borderColor: Colors.glassBorder,
-    paddingHorizontal: 20, height: 56,
-  },
-  prefix: { color: Colors.gray, fontSize: 16, fontWeight: '700', marginRight: 8 },
-  input: { flex: 1, color: Colors.white, fontSize: 22, fontWeight: '700' },
-  hint: { color: Colors.gray, fontSize: 12, marginTop: 8, marginLeft: 4 },
-  errorText: { color: Colors.red, fontSize: 13, marginTop: 8 },
-  btn: {
-    backgroundColor: Colors.greenGlass,
-    borderRadius: 999, height: 52,
-    alignItems: 'center', justifyContent: 'center',
-    marginTop: 32, alignSelf: 'flex-start', paddingHorizontal: 32,
-    borderWidth: 1, borderColor: Colors.glassBorder,
-  },
-  btnDisabled: { opacity: 0.4 },
-  btnText: { color: Colors.white, fontSize: 16, fontWeight: '700' },
-});

@@ -102,6 +102,14 @@ def upload_bank_letter(
 
 # ── Employment ────────────────────────────────────────────────────────────────
 
+@router.get("/employment", response_model=EmploymentResponse)
+def get_employment(
+    user: User = Depends(get_verified_user),
+    db: Session = Depends(get_db),
+):
+    return user_service.get_employment(db, user)
+
+
 @router.put("/employment", response_model=EmploymentResponse)
 def upsert_employment(
     data: EmploymentUpsertRequest,

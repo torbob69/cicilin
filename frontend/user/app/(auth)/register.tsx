@@ -1,151 +1,112 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-} from 'react-native';
-import { useRouter, Link } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { authAPI } from '../../services/api';
-import { Colors } from '../../constants/colors';
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { authService } from "@/services/auth";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { toast, show, hide } = useToast();
+
   const [form, setForm] = useState({
-    full_name: '',
-    phone: '',
-    email: '',
-    password: '',
+    full_name: "", phone: "", email: "", password: "", confirm: "",
   });
-  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Partial<typeof form>>({});
 
-  function update(field: keyof typeof form, val: string) {
-    setForm((f) => ({ ...f, [field]: val }));
-  }
+  const set = (key: keyof typeof form) => (val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
 
-  async function handleRegister() {
-    const { full_name, phone, email, password } = form;
-    if (!full_name.trim() || !phone.trim() || !email.trim() || !password.trim()) {
-      setError('Semua field wajib diisi');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password minimal 8 karakter');
-      return;
-    }
-    setError('');
+  const validate = () => {
+    const e: Partial<typeof form> = {};
+    if (!form.full_name.trim()) e.full_name = "Nama wajib diisi";
+    if (!form.phone.trim()) e.phone = "Nomor HP wajib diisi";
+    if (!form.email.trim()) e.email = "Email wajib diisi";
+    if (form.password.length < 8) e.password = "Min. 8 karakter";
+    if (form.password !== form.confirm) e.confirm = "Password tidak sama";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
-      await authAPI.register({ full_name: full_name.trim(), phone: phone.trim(), email: email.trim(), password });
-      router.push({ pathname: '/(auth)/otp', params: { phone: phone.trim(), purpose: 'registration' } });
-    } catch (e: any) {
-      const detail = e?.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Pendaftaran gagal. Coba lagi.');
+      await authService.register({
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
+      router.push({
+        pathname: "/(auth)/otp",
+        params: { phone: form.phone.trim(), purpose: "register" },
+      });
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? "Pendaftaran gagal.";
+      show(typeof msg === "string" ? msg : JSON.stringify(msg), "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="chevron-left" size={22} color={Colors.green} />
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero */}
+        <View style={{ paddingTop: insets.top + 32, paddingBottom: 32 }} className="px-xl">
+          <TouchableOpacity onPress={() => router.back()} className="mb-xl">
+            <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
           </TouchableOpacity>
+          <Text className="text-4xl font-sans-black text-ink leading-tight">
+            Buat akun{"\n"}baru.
+          </Text>
+          <Text className="text-sm text-body mt-sm">
+            Mulai perjalanan kreditmu bersama Cicilin.
+          </Text>
+        </View>
 
-          <Text style={styles.title}>Buat akun baru</Text>
-          <Text style={styles.subtitle}>Daftar dan mulai pinjam dengan mudah</Text>
+        {/* Form */}
+        <View className="flex-1 bg-canvas rounded-t-3xl px-xl pt-2xl pb-xl">
+          <View className="gap-lg">
+            <Input label="Nama Lengkap" placeholder="Sesuai KTP" value={form.full_name} onChangeText={set("full_name")} error={errors.full_name} />
+            <Input label="Nomor HP" placeholder="08xx xxxx xxxx" keyboardType="phone-pad" value={form.phone} onChangeText={set("phone")} error={errors.phone} />
+            <Input label="Email" placeholder="kamu@email.com" keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={set("email")} error={errors.email} />
+            <Input label="Password" placeholder="Min. 8 karakter" secureTextEntry value={form.password} onChangeText={set("password")} error={errors.password} />
+            <Input label="Konfirmasi Password" placeholder="Ulangi password" secureTextEntry value={form.confirm} onChangeText={set("confirm")} error={errors.confirm} />
+          </View>
 
-          {[
-            { label: 'Nama lengkap', field: 'full_name' as const, icon: 'user', keyboard: 'default' },
-            { label: 'Nomor HP', field: 'phone' as const, icon: 'phone', keyboard: 'phone-pad' },
-            { label: 'Email', field: 'email' as const, icon: 'mail', keyboard: 'email-address' },
-          ].map(({ label, field, icon, keyboard }) => (
-            <View key={field} style={styles.inputWrap}>
-              <Feather name={icon as any} size={18} color={Colors.gray} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder={label}
-                placeholderTextColor={Colors.gray}
-                value={form[field]}
-                onChangeText={(v) => update(field, v)}
-                keyboardType={keyboard as any}
-                autoCapitalize={field === 'full_name' ? 'words' : 'none'}
-              />
-            </View>
-          ))}
+          <Button label="Daftar" loading={loading} onPress={handleRegister} className="mt-2xl" />
 
-          {/* Password */}
-          <View style={styles.inputWrap}>
-            <Feather name="lock" size={18} color={Colors.gray} style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, styles.flex]}
-              placeholder="Password (min. 8 karakter)"
-              placeholderTextColor={Colors.gray}
-              value={form.password}
-              onChangeText={(v) => update('password', v)}
-              secureTextEntry={!showPw}
-            />
-            <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
-              <Feather name={showPw ? 'eye-off' : 'eye'} size={18} color={Colors.gray} />
+          <View className="flex-row justify-center mt-xl gap-xs">
+            <Text className="text-sm text-body">Sudah punya akun?</Text>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text className="text-sm font-sans-semibold text-ink underline">Masuk</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </ScrollView>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Daftar</Text>}
-          </TouchableOpacity>
-
-          <View style={styles.loginRow}>
-            <Text style={styles.grayText}>Sudah punya akun? </Text>
-            <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.greenLink}>Masuk</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <Toast {...toast} onHide={hide} />
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  container: { flexGrow: 1, padding: 24, paddingTop: 60 },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.greenBorder, alignItems: 'center', justifyContent: 'center',
-    marginBottom: 28,
-  },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 28 },
-  inputWrap: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.surface,
-    borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
-    marginBottom: 14, paddingHorizontal: 14, height: 52,
-  },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, color: Colors.white, fontSize: 15 },
-  eyeBtn: { padding: 4 },
-  errorText: { color: Colors.red, fontSize: 13, marginBottom: 12 },
-  btn: {
-    backgroundColor: Colors.green, borderRadius: 999, height: 52,
-    alignItems: 'center', justifyContent: 'center', marginTop: 4,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  grayText: { color: Colors.gray, fontSize: 14 },
-  greenLink: { color: Colors.green, fontSize: 14, fontWeight: '600' },
-});

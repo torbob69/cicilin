@@ -1,234 +1,538 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { loanAPI } from '../services/api';
-import { Colors } from '../constants/colors';
-import {
-  formatIDR, formatDate, LOAN_INTENT_MAP, LOAN_STATUS_LABEL, LOAN_STATUS_COLOR,
-} from '../constants/helpers';
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Modal,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLoansStore, Repayment } from "@/store/loans";
+import { useAuthStore } from "@/store/auth";
+import { loanService } from "@/services/loans";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { OtpInput } from "@/components/ui/OtpInput";
+import { SkeletonCard, Skeleton } from "@/components/ui/Skeleton";
+import { useToast, Toast } from "@/components/ui/Toast";
+import { LOAN_INTENTS } from "@/constants/config";
 
-export default function LoanDetailScreen() {
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [loan, setLoan] = useState<any>(null);
-  const [repayments, setRepayments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [payingId, setPayingId] = useState<number | null>(null);
+function formatIDR(n: number) {
+  return `Rp ${n.toLocaleString("id-ID")}`;
+}
 
-  const fetchData = useCallback(async () => {
+// ── Accept Offer Modal ────────────────────────────────────────────────────────
+
+function AcceptOfferModal({
+  visible,
+  loanId,
+  monthly,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  visible: boolean;
+  loanId: number;
+  monthly: number;
+  onClose: () => void;
+  onSuccess: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [pin, setPin] = useState("      ");
+  const [loading, setLoading] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const handleConfirm = async () => {
+    const trimmed = pin.trim();
+    if (trimmed.length < 6) {
+      onError("Masukkan 6 digit PIN");
+      return;
+    }
+    setLoading(true);
     try {
-      const [loanRes, repRes] = await Promise.all([
-        loanAPI.get(Number(id)),
-        loanAPI.listRepayments(Number(id)),
-      ]);
-      setLoan(loanRes.data);
-      setRepayments(repRes.data);
-    } catch {}
-    setLoading(false);
-    setRefreshing(false);
-  }, [id]);
-
-  useEffect(() => { fetchData(); }, []);
-  const onRefresh = useCallback(() => { setRefreshing(true); fetchData(); }, [fetchData]);
-
-  async function handlePay(repaymentId: number) {
-    Alert.alert('Bayar Cicilan', 'Konfirmasi pembayaran cicilan ini?', [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Bayar', onPress: async () => {
-          setPayingId(repaymentId);
-          try {
-            const res = await loanAPI.pay(Number(id), repaymentId);
-            const { xp_gained, new_rank } = res.data;
-            Alert.alert('Pembayaran Berhasil! 🎉', `+${xp_gained} XP\nRank: ${new_rank}`);
-            fetchData();
-          } catch (e: any) {
-            Alert.alert('Gagal', e?.response?.data?.detail ?? 'Pembayaran gagal.');
-          } finally {
-            setPayingId(null);
-          }
-        },
-      },
-    ]);
-  }
-
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator color={Colors.green} size="large" />
-      </SafeAreaView>
-    );
-  }
-
-  if (!loan) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.emptyWrap}>
-          <Text style={styles.emptyText}>Data tidak ditemukan</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={{ color: Colors.green, marginTop: 10 }}>Kembali</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const statusColor = LOAN_STATUS_COLOR[loan.loan_status] ?? Colors.gray;
-  const statusLabel = LOAN_STATUS_LABEL[loan.loan_status] ?? loan.loan_status;
+      await loanService.acceptOffer(loanId, trimmed);
+      setPin("      ");
+      onClose();
+      onSuccess();
+    } catch (err: any) {
+      onError(err?.response?.data?.detail ?? "Gagal menerima penawaran");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.green} />}
-        showsVerticalScrollIndicator={false}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <KeyboardAvoidingView
+        className="flex-1 justify-end"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="chevron-left" size={22} color={Colors.green} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Detail Pinjaman</Text>
-        </View>
+        <Pressable className="flex-1" onPress={onClose} />
+        <View
+          className="bg-canvas rounded-t-3xl px-xl pt-xl"
+          style={{ paddingBottom: insets.bottom + 24 }}
+        >
+          <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
 
-        {/* Status badge */}
-        <View style={[styles.statusBadge, { borderColor: statusColor, backgroundColor: `${statusColor}20` }]}>
-          <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
-        </View>
+          <Text className="text-lg font-sans-black text-ink mb-xs">Terima Penawaran Pinjaman</Text>
+          <Text className="text-sm text-mute mb-xl">
+            Masukkan PIN 6 digit untuk menyetujui dan mencairkan dana.
+          </Text>
 
-        {/* Amount */}
-        <Text style={styles.amount}>{formatIDR(loan.loan_amnt)}</Text>
-        <Text style={styles.subLabel}>{loan.tenure_months} bulan · Cicilan {formatIDR(loan.monthly_installment ?? 0)}/bulan</Text>
-
-        {/* Details card */}
-        <View style={styles.detailCard}>
-          {[
-            { label: 'Tujuan', value: LOAN_INTENT_MAP[loan.loan_intent] ?? loan.loan_intent },
-            { label: 'Grade', value: loan.loan_grade },
-            { label: 'Bunga', value: `${loan.loan_int_rate}% p.a.` },
-            { label: 'Tenor', value: `${loan.tenure_months} bulan` },
-            { label: 'Persen penghasilan', value: `${(loan.loan_percent_income * 100).toFixed(1)}%` },
-            { label: 'Diajukan', value: formatDate(loan.created_at) },
-            { label: 'Dicairkan', value: loan.disbursed_at ? formatDate(loan.disbursed_at) : '-' },
-          ].map(({ label, value }) => (
-            <View key={label} style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{label}</Text>
-              <Text style={styles.detailValue}>{value}</Text>
-            </View>
-          ))}
-
-          {loan.confidence !== null && loan.confidence !== undefined && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>ML Score</Text>
-              <Text style={[styles.detailValue, { color: loan.confidence >= 0.75 ? Colors.green : Colors.orange }]}>
-                {(loan.confidence * 100).toFixed(1)}%
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Repayments */}
-        {repayments.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Jadwal Cicilan</Text>
-            {repayments.map((rep: any) => {
-              const isPaid = rep.status === 'paid';
-              const isLate = rep.status === 'overdue';
-              const canPay = ['unpaid', 'overdue'].includes(rep.status) && loan.loan_status === 'disbursed';
-
-              return (
-                <View key={rep.id} style={styles.repRow}>
-                  <View style={styles.repLeft}>
-                    <Text style={styles.repNum}>Cicilan #{rep.installment_number}</Text>
-                    <Text style={styles.repDate}>Jatuh tempo: {formatDate(rep.due_date)}</Text>
-                    <Text style={[styles.repStatus, { color: isPaid ? Colors.green : isLate ? Colors.red : Colors.gray }]}>
-                      {isPaid ? '✓ Lunas' : isLate ? '⚠ Telat' : 'Belum bayar'}
-                    </Text>
-                  </View>
-                  <View style={styles.repRight}>
-                    <Text style={styles.repAmount}>{formatIDR(rep.amount)}</Text>
-                    {rep.penalty > 0 && (
-                      <Text style={styles.repPenalty}>+{formatIDR(rep.penalty)} denda</Text>
-                    )}
-                    {canPay && (
-                      <TouchableOpacity
-                        style={styles.payBtn}
-                        onPress={() => handlePay(rep.id)}
-                        disabled={payingId === rep.id}
-                        activeOpacity={0.85}
-                      >
-                        {payingId === rep.id
-                          ? <ActivityIndicator color="#000" size="small" />
-                          : <Text style={styles.payBtnText}>Bayar</Text>
-                        }
-                      </TouchableOpacity>
-                    )}
-                    {isPaid && rep.paid_at && (
-                      <Text style={styles.paidDate}>Dibayar {formatDate(rep.paid_at)}</Text>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
+          <View className="bg-canvas-soft rounded-xl px-lg py-md mb-xl">
+            <Text className="text-xs text-mute mb-xxs">Total tagihan</Text>
+            <Text className="text-xl font-sans-black text-ink">{formatIDR(monthly)}</Text>
+            <Text className="text-xs text-mute mt-xxs">Dibayar sekali sebelum akhir tenor</Text>
           </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+
+          <OtpInput value={pin} onChange={setPin} length={6} secureTextEntry />
+
+          <View className="gap-sm mt-xl">
+            <Button
+              label={loading ? "Memproses…" : "Cairkan Dana"}
+              loading={loading}
+              onPress={handleConfirm}
+            />
+            <Button label="Batal" variant="tertiary" onPress={onClose} disabled={loading} />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { padding: 20, paddingBottom: 60 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.greenBorder, alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: { color: Colors.white, fontSize: 18, fontWeight: '700' },
-  statusBadge: {
-    alignSelf: 'flex-start', borderWidth: 1, borderRadius: 999,
-    paddingHorizontal: 12, paddingVertical: 5, marginBottom: 12,
-  },
-  statusText: { fontSize: 13, fontWeight: '700' },
-  amount: { color: Colors.white, fontSize: 34, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
-  subLabel: { color: Colors.gray, fontSize: 13, marginBottom: 24 },
-  detailCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 24,
-  },
-  detailRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  detailLabel: { color: Colors.gray, fontSize: 13 },
-  detailValue: { color: Colors.white, fontSize: 13, fontWeight: '600' },
-  section: { marginBottom: 24 },
-  sectionTitle: { color: Colors.white, fontSize: 18, fontWeight: '700', marginBottom: 14 },
-  repRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 10,
-  },
-  repLeft: { flex: 1 },
-  repNum: { color: Colors.white, fontSize: 14, fontWeight: '700', marginBottom: 3 },
-  repDate: { color: Colors.gray, fontSize: 12, marginBottom: 3 },
-  repStatus: { fontSize: 12, fontWeight: '600' },
-  repRight: { alignItems: 'flex-end', gap: 4 },
-  repAmount: { color: Colors.white, fontSize: 15, fontWeight: '700' },
-  repPenalty: { color: Colors.red, fontSize: 11 },
-  payBtn: {
-    backgroundColor: Colors.green, borderRadius: 999, paddingHorizontal: 14,
-    paddingVertical: 6, marginTop: 4, minWidth: 60, alignItems: 'center',
-  },
-  payBtnText: { color: '#000', fontSize: 12, fontWeight: '700' },
-  paidDate: { color: Colors.green, fontSize: 11 },
-  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: Colors.gray, fontSize: 15 },
-});
+// ── Payment Modal ─────────────────────────────────────────────────────────────
+
+interface PaymentResult {
+  xp_gained: number;
+  new_rank: string;
+  loan_closed: boolean;
+}
+
+function PaymentModal({
+  repayment,
+  loanId,
+  onClose,
+  onSuccess,
+  onError,
+}: {
+  repayment: Repayment | null;
+  loanId: number;
+  onClose: () => void;
+  onSuccess: (result: PaymentResult) => void;
+  onError: (msg: string) => void;
+}) {
+  const [paying, setPaying] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  const total = repayment ? repayment.amount + repayment.penalty : 0;
+  const isOverdue = repayment
+    ? !repayment.paid_at && new Date(repayment.due_date) < new Date()
+    : false;
+
+  const handleConfirm = async () => {
+    if (!repayment) return;
+    setPaying(true);
+    try {
+      const res = await loanService.payInstallment(loanId, repayment.id);
+      onClose();
+      onSuccess(res.data);
+    } catch (err: any) {
+      onError(err?.response?.data?.detail ?? "Pembayaran gagal");
+      setPaying(false);
+    }
+  };
+
+  return (
+    <Modal
+      visible={!!repayment}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View className="flex-1 justify-end" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+        <Pressable className="flex-1" onPress={onClose} />
+        <View
+          className="bg-canvas rounded-t-3xl px-xl pt-xl"
+          style={{ paddingBottom: insets.bottom + 24 }}
+        >
+          <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
+
+          <Text className="text-lg font-sans-black text-ink mb-xs">Konfirmasi Pembayaran</Text>
+          <Text className="text-sm text-mute mb-xl">
+            Cicilan #{repayment?.installment_number} · jatuh tempo{" "}
+            {repayment
+              ? new Date(repayment.due_date).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : ""}
+          </Text>
+
+          <View className="bg-canvas-soft rounded-xl px-lg py-md mb-xl gap-sm">
+            <View className="flex-row justify-between">
+              <Text className="text-sm text-mute">Pokok cicilan</Text>
+              <Text className="text-sm font-sans-semibold text-ink">
+                {repayment ? formatIDR(repayment.amount) : "—"}
+              </Text>
+            </View>
+            {repayment && repayment.penalty > 0 && (
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-negative">Denda keterlambatan</Text>
+                <Text className="text-sm font-sans-semibold text-negative">
+                  +{formatIDR(repayment.penalty)}
+                </Text>
+              </View>
+            )}
+            <View className="h-px bg-ink/10" />
+            <View className="flex-row justify-between">
+              <Text className="text-sm font-sans-semibold text-ink">Total dibayar</Text>
+              <Text className="text-base font-sans-black text-ink">{formatIDR(total)}</Text>
+            </View>
+          </View>
+
+          {isOverdue && (
+            <View className="bg-negative/10 rounded-xl px-lg py-md mb-lg flex-row items-center gap-sm">
+              <Ionicons name="warning-outline" size={16} color="#f87171" />
+              <Text className="text-xs text-negative flex-1">
+                Cicilan ini terlambat. Denda telah ditambahkan.
+              </Text>
+            </View>
+          )}
+
+          <View className="gap-sm">
+            <Button
+              label={paying ? "Memproses…" : "Bayar Sekarang"}
+              loading={paying}
+              onPress={handleConfirm}
+            />
+            <Button label="Batal" variant="tertiary" onPress={onClose} disabled={paying} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
+
+const STATUS_PILL: Record<string, string> = {
+  paid: "bg-primary-pale text-positive-deep",
+  unpaid: "bg-canvas-soft text-body",
+  overdue: "bg-negative/10 text-negative",
+};
+
+export default function LoanDetailScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { activeLoan, fetchLoanDetail, isLoading } = useLoansStore();
+  const { fetchProfile } = useAuthStore();
+  const { toast, show, hide } = useToast();
+
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [selectedRepayment, setSelectedRepayment] = useState<Repayment | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    if (id) await fetchLoanDetail(Number(id));
+  };
+
+  useEffect(() => { load(); }, [id]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
+  const handleAcceptSuccess = async () => {
+    show("Dana berhasil dicairkan! Cicilan pertama dimulai bulan depan.", "success");
+    await load();
+  };
+
+  const handlePaySuccess = async (result: PaymentResult) => {
+    const msg = result.loan_closed
+      ? `Pinjaman lunas! +${result.xp_gained} XP · Rank: ${result.new_rank}`
+      : `Pembayaran berhasil! +${result.xp_gained} XP · ${result.new_rank}`;
+    show(msg, "success");
+    await Promise.all([load(), fetchProfile()]);
+  };
+
+  const loan = activeLoan;
+  const intentLabel =
+    LOAN_INTENTS.find((i) => i.value === loan?.loan_intent)?.label ?? loan?.loan_intent;
+
+  const isApproved = loan?.loan_status === "approved";
+  const isDisbursed = loan?.loan_status === "disbursed";
+
+  const paidCount = (loan?.repayments ?? []).filter((r) => r.paid_at).length;
+  const totalCount = loan?.repayments?.length ?? 0;
+
+  return (
+    <View className="flex-1 bg-canvas-soft">
+      {/* Header */}
+      <View
+        style={{ paddingTop: insets.top + 16 }}
+        className="px-xl pb-lg flex-row items-center gap-md"
+      >
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
+        </TouchableOpacity>
+        <Text className="text-lg font-sans-black text-ink">Detail Pinjaman</Text>
+      </View>
+
+      {isLoading && !refreshing ? (
+        <View className="px-xl gap-sm">
+          <SkeletonCard />
+          <Skeleton height={200} rounded="xl" />
+        </View>
+      ) : !loan ? (
+        <View className="flex-1 items-center justify-center">
+          <Text className="text-mute">Pinjaman tidak ditemukan</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          {/* ── Summary card ── */}
+          <Card variant="dark" className="mb-lg gap-sm">
+            <View className="flex-row justify-between items-start">
+              <View>
+                <Text className="text-xs text-primary/70">{intentLabel}</Text>
+                <Text className="text-3xl font-sans-black text-primary">
+                  {formatIDR(loan.loan_amnt)}
+                </Text>
+              </View>
+              <View
+                className={`rounded-pill px-md py-xs ${
+                  isDisbursed ? "bg-primary/20" : "bg-canvas/10"
+                }`}
+              >
+                <Text className="text-xs font-sans-semibold text-primary capitalize">
+                  {isDisbursed
+                    ? "Aktif"
+                    : isApproved
+                    ? "Disetujui"
+                    : loan.loan_status.replace("_", " ")}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row gap-lg mt-xs">
+              <View>
+                <Text className="text-xs text-primary/60">Total tagihan</Text>
+                <Text className="text-sm font-sans-semibold text-primary">
+                  {formatIDR(loan.monthly_installment * loan.tenure_months)}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-primary/60">Tenor</Text>
+                <Text className="text-sm font-sans-semibold text-primary">
+                  {loan.tenure_months} bulan
+                </Text>
+              </View>
+              <View>
+                <Text className="text-xs text-primary/60">Bunga</Text>
+                <Text className="text-sm font-sans-semibold text-primary">
+                  {loan.loan_int_rate}% p.a.
+                </Text>
+              </View>
+            </View>
+
+            {isDisbursed && totalCount > 0 && (
+              <View className="mt-sm pt-sm border-t border-white/10">
+                <View className="flex-row justify-between items-center">
+                  <Text className="text-xs text-primary/60">Status pelunasan</Text>
+                  <View className={`rounded-pill px-sm py-xxs ${paidCount > 0 ? "bg-positive/20" : "bg-black/20"}`}>
+                    <Text className={`text-xs font-sans-semibold ${paidCount > 0 ? "text-positive-deep" : "text-primary/60"}`}>
+                      {paidCount > 0 ? "Lunas" : "Belum dibayar"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </Card>
+
+          {/* ── Accept Offer Banner ── */}
+          {isApproved && (
+            <View className="bg-primary-pale border border-primary/30 rounded-xl px-lg py-md mb-lg">
+              <View className="flex-row items-center gap-sm mb-md">
+                <Ionicons name="checkmark-circle" size={20} color="#9fe870" />
+                <Text className="text-sm font-sans-bold text-primary">
+                  Pinjaman Anda Disetujui
+                </Text>
+              </View>
+              <Text className="text-xs text-mute leading-5 mb-lg">
+                Total tagihan {formatIDR(loan.monthly_installment * loan.tenure_months)} — dibayar sekali sebelum {loan.tenure_months} bulan berakhir.
+                Konfirmasi dengan PIN untuk mencairkan dana.
+              </Text>
+              <Button
+                label="Terima & Cairkan Dana"
+                onPress={() => setShowAcceptModal(true)}
+              />
+            </View>
+          )}
+
+          {/* ── ML score ── */}
+          {loan.confidence != null && (
+            <Card variant="sage" className="mb-lg">
+              <View className="flex-row justify-between">
+                <Text className="text-sm text-body">ML Confidence Score</Text>
+                <Text className="text-sm font-sans-semibold text-ink">
+                  {Math.round(loan.confidence * 100)}%
+                </Text>
+              </View>
+              {loan.review_note && (
+                <Text className="text-xs text-body mt-sm">Catatan: {loan.review_note}</Text>
+              )}
+            </Card>
+          )}
+
+          {/* ── Payment ── */}
+          <Text className="text-base font-sans-semibold text-ink mb-sm">Tagihan</Text>
+
+          {(loan.repayments ?? []).length === 0 ? (
+            <Card variant="sage">
+              <Text className="text-sm text-mute text-center">
+                {isApproved
+                  ? "Tagihan akan dibuat setelah Anda menerima penawaran"
+                  : loan.loan_status === "manual_review"
+                  ? "Menunggu tinjauan admin"
+                  : "Belum ada tagihan"}
+              </Text>
+            </Card>
+          ) : (() => {
+            const rep = loan.repayments![0];
+            const isOverdue = !rep.paid_at && new Date(rep.due_date) < new Date();
+            const daysLeft = Math.ceil(
+              (new Date(rep.due_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+            );
+
+            return (
+              <View
+                className={`rounded-xl p-lg ${
+                  rep.paid_at
+                    ? "bg-primary-pale border border-positive/20"
+                    : isOverdue
+                    ? "bg-negative/5 border border-negative/20"
+                    : "bg-canvas border border-white/[0.06]"
+                }`}
+              >
+                {/* Amount row */}
+                <View className="flex-row items-center justify-between mb-md">
+                  <View>
+                    <Text className="text-xs text-mute mb-xxs">Total tagihan</Text>
+                    <Text className="text-2xl font-sans-black text-ink">
+                      {formatIDR(rep.amount + rep.penalty)}
+                    </Text>
+                    {rep.penalty > 0 && (
+                      <Text className="text-xs text-negative mt-xxs">
+                        Termasuk denda {formatIDR(rep.penalty)}
+                      </Text>
+                    )}
+                  </View>
+                  {rep.paid_at ? (
+                    <View className="bg-positive/20 rounded-full w-12 h-12 items-center justify-center">
+                      <Ionicons name="checkmark-circle" size={28} color="#4ade80" />
+                    </View>
+                  ) : (
+                    <View className={`rounded-full w-12 h-12 items-center justify-center ${
+                      isOverdue ? "bg-negative/20" : "bg-primary/20"
+                    }`}>
+                      <Ionicons
+                        name={isOverdue ? "warning-outline" : "time-outline"}
+                        size={22}
+                        color={isOverdue ? "#f87171" : "#9fe870"}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* Due date row */}
+                <View className="flex-row items-center justify-between py-sm border-t border-ink/10">
+                  <View>
+                    <Text className="text-xs text-mute">Jatuh tempo</Text>
+                    <Text className="text-sm font-sans-semibold text-ink">
+                      {new Date(rep.due_date).toLocaleDateString("id-ID", {
+                        day: "numeric", month: "long", year: "numeric",
+                      })}
+                    </Text>
+                  </View>
+                  {rep.paid_at ? (
+                    <Text className="text-xs text-positive-deep">
+                      Dibayar {new Date(rep.paid_at).toLocaleDateString("id-ID", {
+                        day: "numeric", month: "short",
+                      })}
+                    </Text>
+                  ) : (
+                    <Text className={`text-xs font-sans-semibold ${
+                      isOverdue ? "text-negative" : daysLeft <= 7 ? "text-warning" : "text-mute"
+                    }`}>
+                      {isOverdue
+                        ? `Terlambat ${Math.abs(daysLeft)} hari`
+                        : daysLeft === 0
+                        ? "Hari ini"
+                        : `${daysLeft} hari lagi`}
+                    </Text>
+                  )}
+                </View>
+
+                {!rep.paid_at && (
+                  <TouchableOpacity
+                    onPress={() => setSelectedRepayment(rep)}
+                    activeOpacity={0.8}
+                    className={`mt-md rounded-xl py-md items-center ${
+                      isOverdue ? "bg-negative" : "bg-primary"
+                    }`}
+                  >
+                    <Text className={`text-sm font-sans-semibold ${
+                      isOverdue ? "text-white" : "text-on-primary"
+                    }`}>
+                      Bayar Sekarang
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
+        </ScrollView>
+      )}
+
+      <AcceptOfferModal
+        visible={showAcceptModal}
+        loanId={Number(id)}
+        monthly={(loan?.monthly_installment ?? 0) * (loan?.tenure_months ?? 1)}
+        onClose={() => setShowAcceptModal(false)}
+        onSuccess={handleAcceptSuccess}
+        onError={(msg) => show(msg, "error")}
+      />
+
+      <PaymentModal
+        repayment={selectedRepayment}
+        loanId={Number(id)}
+        onClose={() => setSelectedRepayment(null)}
+        onSuccess={(result) => handlePaySuccess(result)}
+        onError={(msg) => show(msg, "error")}
+      />
+
+      <Toast {...toast} onHide={hide} />
+    </View>
+  );
+}

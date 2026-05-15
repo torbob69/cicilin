@@ -1,81 +1,77 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLoanStore } from '../../../store/loan';
-import { Colors } from '../../../constants/colors';
+import React, { useEffect, useRef } from "react";
+import { View, Text, Animated } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { loanService } from "@/services/loans";
 
-export default function ApplyWaitingScreen() {
+export default function WaitingScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { amount, intent, tenure, pin } = useLocalSearchParams<{
+    amount: string; intent: string; tenure: string; pin: string;
+  }>();
+
   const pulse = useRef(new Animated.Value(1)).current;
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    const anim = Animated.loop(
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.12, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
       ])
-    );
-    anim.start();
+    ).start();
+  }, []);
 
-    // Use getState() to avoid stale closure — reads live Zustand state each tick
-    const check = setInterval(() => {
-      if (useLoanStore.getState().draft.result !== null) {
-        clearInterval(check);
-        router.replace('/(tabs)/apply/result');
+  useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
+    const submit = async () => {
+      try {
+        const res = await loanService.apply({
+          loan_amnt: Number(amount),
+          loan_intent: intent,
+          tenure_months: Number(tenure),
+          pin,
+        });
+        const loan = res.data;
+        router.replace({
+          pathname: "/(tabs)/apply/result",
+          params: {
+            status: loan.loan_status,
+            confidence: String(loan.confidence ?? ""),
+            loanId: String(loan.id),
+          },
+        });
+      } catch (err: any) {
+        const msg = err?.response?.data?.detail ?? "Application failed";
+        router.replace({
+          pathname: "/(tabs)/apply/result",
+          params: { status: "error", message: typeof msg === "string" ? msg : JSON.stringify(msg) },
+        });
       }
-    }, 400);
-
-    const timeout = setTimeout(() => {
-      clearInterval(check);
-      router.replace('/(tabs)/apply/result');
-    }, 15000);
-
-    return () => {
-      anim.stop();
-      clearInterval(check);
-      clearTimeout(timeout);
     };
+
+    submit();
   }, []);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <View style={styles.illustrationArea}>
-          <Animated.Text style={[styles.emoji, { transform: [{ scale: pulse }] }]}>⏳</Animated.Text>
-          <View style={styles.personEmoji}>
-            <Text style={styles.personText}>🧑‍💼</Text>
-          </View>
-        </View>
-
-        <View style={styles.textArea}>
-          <Text style={styles.title}>Tunggu bentar yah</Text>
-          <Text style={styles.subtitle}>sistem kita lagi cek permintaan kamu</Text>
-
-          <View style={styles.dotsRow}>
-            {[0, 1, 2].map((i) => (
-              <View key={i} style={[styles.loadDot, { opacity: 0.4 + i * 0.2 }]} />
-            ))}
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+    <View
+      style={{ paddingTop: insets.top }}
+      className="flex-1 bg-canvas-soft items-center justify-center px-xl"
+    >
+      <Animated.View
+        style={{ transform: [{ scale: pulse }] }}
+        className="w-24 h-24 rounded-full bg-primary items-center justify-center mb-2xl"
+      >
+        <Ionicons name="flash" size={36} color="#0e0f0c" />
+      </Animated.View>
+      <Text className="text-2xl font-sans-black text-ink mb-sm">Analyzing…</Text>
+      <Text className="text-base text-body text-center">
+        Our ML model is evaluating your loan application. This takes just a moment.
+      </Text>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { flex: 1, justifyContent: 'space-between', paddingBottom: 80 },
-  illustrationArea: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    gap: 0,
-  },
-  emoji: { fontSize: 100, lineHeight: 120 },
-  personEmoji: { marginTop: -20 },
-  personText: { fontSize: 80 },
-  textArea: { paddingHorizontal: 32, paddingBottom: 20, alignItems: 'center' },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
-  subtitle: { color: Colors.gray, fontSize: 15, textAlign: 'center', lineHeight: 22 },
-  dotsRow: { flexDirection: 'row', gap: 8, marginTop: 24 },
-  loadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.green },
-});

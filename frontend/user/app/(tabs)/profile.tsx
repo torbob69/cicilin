@@ -1,241 +1,409 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert, Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuthStore } from '../../store/auth';
-import { userAPI } from '../../services/api';
-import { Colors, RankColors } from '../../constants/colors';
-import { formatIDR, RANK_XP_THRESHOLDS, RANK_LOAN_LIMITS } from '../../constants/helpers';
-import GlassCard from '../../components/GlassCard';
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useAuthStore } from "@/store/auth";
+import { userService } from "@/services/users";
+import { loanService } from "@/services/loans";
+import { RankBadge } from "@/components/RankBadge";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
+import { RANK_XP, RANK_LIMIT, RANK_RATE } from "@/constants/config";
+import { rankColors } from "@/constants/colors";
 
-function GlassCircle({ children, size = 50 }: { children: React.ReactNode; size?: number }) {
-  if (Platform.OS === 'ios') {
-    return (
-      <BlurView intensity={14} tint="dark"
-        style={[styles.glassCircleBlur, { width: size, height: size, borderRadius: size / 2 }]}
-      >
-        <View style={styles.glassCircleOverlay}>{children}</View>
-      </BlurView>
-    );
-  }
+const MAX_LIMIT = 100_000_000; // Ruby
+
+function formatIDR(n: number) {
+  if (n >= 1_000_000) return `Rp ${(n / 1_000_000).toFixed(0)}jt`;
+  if (n >= 1_000) return `Rp ${(n / 1_000).toFixed(0)}rb`;
+  return `Rp ${n}`;
+}
+
+function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <View style={[styles.glassCircleAndroid, { width: size, height: size, borderRadius: size / 2 }]}>
-      {children}
+    <View className="flex-row justify-between py-md border-b border-ink/5">
+      <Text className="text-sm text-mute">{label}</Text>
+      <Text className="text-sm font-sans-semibold text-ink flex-1 text-right ml-lg" numberOfLines={1}>
+        {value ?? "—"}
+      </Text>
     </View>
   );
 }
 
-const RANK_EMOJI_BIG: Record<string, string> = {
-  Ruby: '💎', Diamond: '🔷', Platinum: '🌟', Gold: '🥇', Silver: '🥈', Bronze: '🥉', Iron: '⚙️',
-};
+interface Employment {
+  occupation: string | null;
+  employer_name: string | null;
+  job_title: string | null;
+  annual_income: number | null;
+}
 
-export default function ProfileScreen() {
-  const router = useRouter();
-  const { user, setUser, logout } = useAuthStore();
-  const [rank, setRank] = useState<any>(null);
-  const [employment, setEmployment] = useState<any>(null);
-  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+// ── Edit Sheet ────────────────────────────────────────────────────────────────
 
-  const fetchData = useCallback(async () => {
+function EditSheet({
+  visible,
+  initial,
+  address,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  initial: Employment;
+  address: string;
+  onClose: () => void;
+  onSave: (address: string, emp: Partial<Employment>) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    address,
+    occupation: initial.occupation ?? "",
+    employer_name: initial.employer_name ?? "",
+    annual_income: initial.annual_income ? String(initial.annual_income) : "",
+  });
+  const [saving, setSaving] = useState(false);
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (visible) {
+      setForm({
+        address,
+        occupation: initial.occupation ?? "",
+        employer_name: initial.employer_name ?? "",
+        annual_income: initial.annual_income ? String(initial.annual_income) : "",
+      });
+    }
+  }, [visible]);
+
+  const set = (k: keyof typeof form) => (v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    setSaving(true);
     try {
-      const [rankRes, meRes] = await Promise.all([
-        userAPI.getRank(),
-        userAPI.getMe(),
-      ]);
-      setRank(rankRes.data);
-      setUser(meRes.data);
-      const banks = await userAPI.listBankAccounts().catch(() => ({ data: [] }));
-      setBankAccounts(banks.data);
-    } catch {}
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
-
-  useEffect(() => { fetchData(); }, []);
-  const onRefresh = useCallback(() => { setRefreshing(true); fetchData(); }, [fetchData]);
-
-  async function handleLogout() {
-    Alert.alert('Keluar', 'Yakin mau keluar dari akun?', [
-      { text: 'Batal', style: 'cancel' },
-      { text: 'Keluar', style: 'destructive', onPress: async () => {
-        await logout();
-        router.replace('/(auth)/login');
-      }},
-    ]);
-  }
-
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator color={Colors.green} />
-      </SafeAreaView>
-    );
-  }
-
-  const rankName = rank?.rank ?? user?.rank ?? 'Gold';
-  const xp = rank?.xp ?? user?.xp ?? 0;
-  const rankColors = RankColors[rankName] ?? RankColors.Iron;
-  const thresholds = RANK_XP_THRESHOLDS[rankName] ?? [0, 100];
-  const xpMin = thresholds[0];
-  const xpMax = thresholds[1] ?? xp + 100;
-  const xpProgress = xpMax > xpMin ? (xp - xpMin) / (xpMax - xpMin) : 1;
-  const monthlyLimit = RANK_LOAN_LIMITS[rankName] ?? 0;
-  const primaryBank = bankAccounts.find((b) => b.is_primary) ?? bankAccounts[0];
-
-  const profileItems = [
-    { label: 'NIK', value: user?.nik ?? '-' },
-    { label: 'Nama Bank', value: primaryBank?.bank_name ?? '-' },
-    { label: 'Nama', value: user?.full_name ?? '-' },
-    { label: 'Penghasilan (per tahun)', value: '-' },
-    { label: 'Umur', value: user?.date_of_birth ? `${new Date().getFullYear() - new Date(user.date_of_birth).getFullYear()} tahun` : '-' },
-    { label: 'Status Domisili', value: user?.home_ownership ?? '-' },
-    { label: 'Profesi', value: '-' },
-    { label: 'Alamat', value: user?.address ?? '-' },
-    { label: 'Lama Bekerja', value: '-' },
-    { label: 'Nama Perusahaan', value: '-' },
-  ];
+      await onSave(form.address, {
+        occupation: form.occupation || null,
+        employer_name: form.employer_name || null,
+        annual_income: form.annual_income ? Number(form.annual_income) : null,
+      });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.green} />}
-        showsVerticalScrollIndicator={false}
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView
+        className="flex-1 justify-end"
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.8}>
-            <GlassCircle size={50}>
-              <Feather name="chevron-left" size={22} color={Colors.green} />
-            </GlassCircle>
-          </TouchableOpacity>
-          <GlassCircle size={50}>
-            <Feather name="user" size={20} color={Colors.white} />
-          </GlassCircle>
-          <Text style={styles.headerName}>{user?.full_name ?? 'User'}</Text>
-        </View>
+        <Pressable className="flex-1" onPress={onClose} />
+        <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24 }}>
+          <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
+          <Text className="text-lg font-sans-black text-ink mb-xl">Edit Informasi</Text>
 
-        {/* Rank badge */}
-        <View style={styles.rankSection}>
-          <View style={[styles.rankBadge, { backgroundColor: rankColors.bg, borderColor: rankColors.border }]}>
-            <Text style={styles.rankEmoji}>{RANK_EMOJI_BIG[rankName] ?? '⚙️'}</Text>
-          </View>
-          <Text style={[styles.rankName, { color: rankColors.text }]}>{rankName}</Text>
-
-          <View style={styles.xpRow}>
-            <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: `${Math.min(xpProgress * 100, 100)}%`, backgroundColor: rankColors.text }]} />
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View className="gap-lg pb-lg">
+              <Input label="Alamat" placeholder="Alamat lengkap" multiline numberOfLines={2}
+                value={form.address} onChangeText={set("address")} />
+              <Input label="Pekerjaan" placeholder="e.g. Software Engineer"
+                value={form.occupation} onChangeText={set("occupation")} />
+              <Input label="Perusahaan" placeholder="e.g. PT. Contoh Indonesia"
+                value={form.employer_name} onChangeText={set("employer_name")} />
+              <Input label="Penghasilan Tahunan (IDR)" placeholder="e.g. 72000000"
+                keyboardType="number-pad"
+                value={form.annual_income} onChangeText={set("annual_income")} />
             </View>
-            <Text style={styles.xpLabel}>{xp}/{xpMax ?? '∞'}xp</Text>
-          </View>
+          </ScrollView>
 
-          <View style={styles.limitRow}>
-            <Text style={styles.limitLabel}>Limit Bulan Ini</Text>
-            <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: '40%', backgroundColor: rankColors.text }]} />
-            </View>
+          <View className="gap-sm">
+            <Button label={saving ? "Menyimpan…" : "Simpan"} loading={saving} onPress={handleSave} />
+            <Button label="Batal" variant="tertiary" onPress={onClose} disabled={saving} />
           </View>
         </View>
-
-        {/* Data pribadi */}
-        <GlassCard radius={20} padding={20} style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <GlassCircle size={36}>
-              <Feather name="edit-2" size={15} color={Colors.green} />
-            </GlassCircle>
-            <Text style={styles.sectionTitle}>Data Pribadi</Text>
-          </View>
-
-          <View style={styles.grid}>
-            {profileItems.map((item, i) => (
-              <View key={i} style={styles.gridItem}>
-                <Text style={styles.gridLabel}>{item.label}</Text>
-                <Text style={styles.gridValue} numberOfLines={2}>{item.value}</Text>
-              </View>
-            ))}
-          </View>
-        </GlassCard>
-
-        {/* Leaderboard shortcut */}
-        <TouchableOpacity
-          style={styles.leaderboardCard}
-          onPress={() => router.push('/leaderboard')}
-          activeOpacity={0.85}
-        >
-          <Feather name="award" size={20} color={Colors.green} />
-          <Text style={styles.leaderboardText}>Lihat Leaderboard</Text>
-          <Feather name="chevron-right" size={18} color={Colors.gray} />
-        </TouchableOpacity>
-
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Feather name="log-out" size={18} color={Colors.red} />
-          <Text style={styles.logoutText}>Keluar</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { padding: 20, paddingBottom: 110 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32 },
+// ── Main Screen ───────────────────────────────────────────────────────────────
 
-  glassCircleBlur: {
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.glassBorder, overflow: 'hidden',
-  },
-  glassCircleOverlay: {
-    flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.glass,
-  },
-  glassCircleAndroid: {
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.glass, borderWidth: 1, borderColor: Colors.glassBorder,
-  },
+export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user, fetchProfile, logout } = useAuthStore();
+  const { toast, show, hide } = useToast();
 
-  headerName: { color: Colors.white, fontSize: 22, fontWeight: '800', flex: 1, letterSpacing: -0.5 },
-  rankSection: { alignItems: 'center', marginBottom: 32 },
-  rankBadge: {
-    width: 100, height: 100, borderRadius: 20, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-    transform: [{ rotate: '10deg' }],
-  },
-  rankEmoji: { fontSize: 48, transform: [{ rotate: '-10deg' }] },
-  rankName: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  xpRow: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', paddingHorizontal: 20, marginBottom: 10 },
-  xpBar: { flex: 1, height: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 999, overflow: 'hidden' },
-  xpFill: { height: 10, borderRadius: 999 },
-  xpLabel: { color: Colors.text3, fontSize: 11, fontWeight: '600', width: 70, textAlign: 'right' },
-  limitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', paddingHorizontal: 20 },
-  limitLabel: { color: Colors.text3, fontSize: 12, width: 110 },
+  const [rankData, setRankData] = useState<any>(null);
+  const [employment, setEmployment] = useState<Employment>({
+    occupation: null, employer_name: null, job_title: null, annual_income: null,
+  });
+  const [editOpen, setEditOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [usedLimit, setUsedLimit] = useState(0);
 
-  sectionCard: { marginBottom: 14 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
-  sectionTitle: { color: Colors.white, fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 22, rowGap: 22 },
-  gridItem: { width: '45%' },
-  gridLabel: { color: Colors.white, fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  gridValue: { color: Colors.text3, fontSize: 14 },
+  const load = async () => {
+    try {
+      const [rankRes, empRes, loansRes] = await Promise.all([
+        userService.getRank(),
+        userService.getEmployment(),
+        loanService.list("approved"),
+      ]);
+      setRankData(rankRes.data);
+      setEmployment(empRes.data);
+      const now = new Date();
+      const used = (loansRes.data ?? [])
+        .filter((l: any) => {
+          const d = new Date(l.created_at);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        })
+        .reduce((sum: number, l: any) => sum + (l.loan_amnt ?? 0), 0);
+      setUsedLimit(used);
+    } catch {}
+  };
 
-  leaderboardCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.glass, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.glassBorder, marginBottom: 14,
-  },
-  leaderboardText: { flex: 1, color: Colors.white, fontSize: 15, fontWeight: '600' },
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    borderWidth: 1.5, borderColor: Colors.redHard, borderRadius: 999,
-    paddingHorizontal: 20, paddingVertical: 12, alignSelf: 'center', marginTop: 8,
-  },
-  logoutText: { color: Colors.redHard, fontSize: 15, fontWeight: '600' },
-});
+  useEffect(() => { load(); }, []);
+
+  const handleSave = async (address: string, emp: Partial<Employment>) => {
+    try {
+      await Promise.all([
+        userService.updateMe({ address }),
+        userService.updateEmployment({
+          occupation: emp.occupation ?? "",
+          employer_name: emp.employer_name ?? "",
+          job_title: employment.job_title ?? "",
+          emp_length: 0,
+          annual_income: emp.annual_income ?? 0,
+        }),
+      ]);
+      await Promise.all([fetchProfile(), load()]);
+      show("Profil diperbarui", "success");
+    } catch (err: any) {
+      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
+      throw err;
+    }
+  };
+
+  const doLogout = async () => {
+    setLoggingOut(true);
+    setLogoutOpen(false);
+    await logout();
+    router.replace("/(auth)/login");
+  };
+
+  const rank = rankData?.rank ?? user?.rank ?? "Gold";
+  const xp = rankData?.xp ?? user?.xp ?? 0;
+  const rate = rankData?.interest_rate ?? RANK_RATE[rank] ?? 15;
+  const monthlyLimit = rankData?.monthly_limit ?? RANK_LIMIT[rank] ?? 0;
+  const colors = rankColors[rank] ?? { bg: "#161915", text: "#9fe870" };
+
+  // XP bar: progress within current rank tier
+  const [xpMin, xpMax] = RANK_XP[rank] ?? [0, 100];
+  const xpPct = xpMax === Infinity ? 1 : Math.min(xp / xpMax, 1);
+  const xpToNext = rankData?.xp_to_next_rank;
+
+  // Monthly limit bar: used this month vs total rank limit
+  const limitPct = monthlyLimit > 0 ? Math.min(usedLimit / monthlyLimit, 1) : 0;
+
+  const [barWidth, setBarWidth] = useState(0);
+
+  return (
+    <View className="flex-1 bg-canvas-soft">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
+        {/* ── Hero card ── */}
+        <View style={{ backgroundColor: colors.bg, paddingTop: insets.top + 24, paddingBottom: 0 }}>
+          {/* Name row */}
+          <View className="px-xl flex-row items-center justify-between mb-xl">
+            <View>
+              <Text style={{ color: colors.text, opacity: 0.7 }} className="text-xs font-sans-medium uppercase tracking-wider">
+                Profil Saya
+              </Text>
+              <Text style={{ color: colors.text }} className="text-xl font-sans-black mt-xxs">
+                {user?.full_name ?? "—"}
+              </Text>
+              <Text style={{ color: colors.text, opacity: 0.6 }} className="text-sm mt-xxs">
+                {user?.phone}
+              </Text>
+            </View>
+            <RankBadge rank={rank} size={64} />
+          </View>
+
+          {/* Rank label */}
+          <View className="px-xl mb-lg">
+            <View className="flex-row items-center gap-sm">
+              <Text style={{ color: colors.text }} className="text-3xl font-sans-black">{rank}</Text>
+            </View>
+          </View>
+
+          {/* Progress bars */}
+          <View className="px-xl pb-xl gap-lg">
+            {/* XP bar */}
+            <View className="gap-xs">
+              <View className="flex-row justify-between">
+                <Text style={{ color: colors.text, opacity: 0.7 }} className="text-xs font-sans-medium">XP</Text>
+                <Text style={{ color: colors.text, opacity: 0.7 }} className="text-xs">
+                  {xp.toLocaleString("id-ID")} / {xpMax === Infinity ? "Max" : `${xpMax.toLocaleString("id-ID")} XP`}
+                </Text>
+              </View>
+              <View
+                style={{ backgroundColor: "rgba(0,0,0,0.2)", height: 8, borderRadius: 9999, overflow: "hidden" }}
+                onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+              >
+                <View style={{ width: Math.max(xpPct * barWidth, barWidth > 0 ? 4 : 0), height: 8, borderRadius: 9999, backgroundColor: colors.text }} />
+              </View>
+            </View>
+
+            {/* Monthly limit bar */}
+            <View className="gap-xs">
+              <View className="flex-row justify-between">
+                <Text style={{ color: colors.text, opacity: 0.7 }} className="text-xs font-sans-medium">Limit Bulanan</Text>
+                <Text style={{ color: colors.text, opacity: 0.7 }} className="text-xs">
+                  {formatIDR(usedLimit)} / {formatIDR(monthlyLimit)}
+                </Text>
+              </View>
+              <View style={{ backgroundColor: "rgba(0,0,0,0.2)", height: 8, borderRadius: 9999, overflow: "hidden" }}>
+                <View style={{ width: Math.max(limitPct * barWidth, barWidth > 0 ? 4 : 0), height: 8, borderRadius: 9999, backgroundColor: colors.text, opacity: 0.7 }} />
+              </View>
+            </View>
+
+            {/* Interest rate */}
+            <Text style={{ color: colors.text, opacity: 0.6 }} className="text-xs">
+              Bunga {rate}% p.a. · Pembayaran sekali di akhir tenor
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Personal info (read-only) ── */}
+        <View className="px-xl mt-xl mb-lg">
+          <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-sm">
+            Informasi Pribadi
+          </Text>
+          <View className="bg-canvas rounded-xl px-lg">
+            <InfoRow label="Nama Lengkap" value={user?.full_name} />
+            <InfoRow label="Nomor HP" value={user?.phone} />
+            <InfoRow label="Email" value={user?.email} />
+            <InfoRow label="NIK" value={user?.nik ?? "Belum diisi"} />
+            <InfoRow
+              label="Tanggal Lahir"
+              value={user?.date_of_birth
+                ? new Date(user.date_of_birth).toLocaleDateString("id-ID", {
+                    day: "numeric", month: "long", year: "numeric",
+                  })
+                : undefined}
+            />
+          </View>
+        </View>
+
+        {/* ── Editable section ── */}
+        <View className="px-xl mb-lg">
+          <View className="flex-row items-center justify-between mb-sm">
+            <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider">
+              Pekerjaan & Keuangan
+            </Text>
+            <TouchableOpacity
+              onPress={() => setEditOpen(true)}
+              className="flex-row items-center gap-xs"
+            >
+              <Ionicons name="pencil-outline" size={13} color="#9fe870" />
+              <Text className="text-xs font-sans-semibold text-primary">Edit</Text>
+            </TouchableOpacity>
+          </View>
+          <View className="bg-canvas rounded-xl px-lg">
+            <InfoRow label="Alamat" value={user?.address} />
+            <InfoRow label="Pekerjaan" value={employment.occupation} />
+            <InfoRow label="Perusahaan" value={employment.employer_name} />
+            <InfoRow
+              label="Penghasilan Tahunan"
+              value={employment.annual_income
+                ? `Rp ${Number(employment.annual_income).toLocaleString("id-ID")}`
+                : undefined}
+            />
+          </View>
+        </View>
+
+        {/* ── Sign out ── */}
+        <View className="px-xl">
+          <Pressable
+            onPress={() => setLogoutOpen(true)}
+            disabled={loggingOut}
+            style={({ pressed }) => ({
+              borderWidth: 1,
+              borderColor: "#f87171",
+              borderRadius: 9999,
+              padding: 16,
+              alignItems: "center",
+              backgroundColor: pressed ? "#f87171" : "transparent",
+            })}
+          >
+            {({ pressed }) => (
+              <Text style={{ fontSize: 14, fontFamily: "DMSans_600SemiBold", color: pressed ? "#0e0f0c" : "#f87171" }}>
+                Log out
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      <EditSheet
+        visible={editOpen}
+        initial={employment}
+        address={user?.address ?? ""}
+        onClose={() => setEditOpen(false)}
+        onSave={handleSave}
+      />
+
+      <Toast {...toast} onHide={hide} />
+
+      {/* Logout confirmation overlay */}
+      <Modal visible={logoutOpen} transparent animationType="fade" onRequestClose={() => setLogoutOpen(false)} statusBarTranslucent>
+        <Pressable
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.7)", justifyContent: "center", alignItems: "center", padding: 24 }}
+          onPress={() => setLogoutOpen(false)}
+        >
+          <Pressable onPress={() => {}} style={{ width: "100%", backgroundColor: "#161915", borderRadius: 20, padding: 24, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" }}>
+            <Text style={{ fontSize: 18, fontFamily: "DMSans_700Bold", color: "#e8ebe6", marginBottom: 8 }}>Keluar</Text>
+            <Text style={{ fontSize: 14, fontFamily: "DMSans_400Regular", color: "#525550", marginBottom: 24 }}>
+              Yakin ingin keluar dari akun ini?
+            </Text>
+            <View style={{ gap: 8 }}>
+              <Pressable
+                onPress={doLogout}
+                disabled={loggingOut}
+                style={({ pressed }) => ({ backgroundColor: pressed ? "#dc2626" : "#f87171", borderRadius: 12, padding: 14, alignItems: "center" })}
+              >
+                <Text style={{ fontSize: 14, fontFamily: "DMSans_600SemiBold", color: "#fff" }}>
+                  {loggingOut ? "Keluar…" : "Keluar"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setLogoutOpen(false)}
+                style={({ pressed }) => ({ backgroundColor: pressed ? "rgba(255,255,255,0.08)" : "transparent", borderRadius: 12, padding: 14, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" })}
+              >
+                <Text style={{ fontSize: 14, fontFamily: "DMSans_600SemiBold", color: "#525550" }}>Batal</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+function _nextRankName(rank: string): string {
+  const order = ["Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ruby"];
+  const i = order.indexOf(rank);
+  return i >= 0 && i < order.length - 1 ? order[i + 1] : "Ruby";
+}

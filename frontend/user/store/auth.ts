@@ -1,60 +1,83 @@
-import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { create } from "zustand";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { userService } from "@/services/users";
 
-interface User {
+export interface User {
   id: number;
+  full_name: string;
   phone: string;
   email: string;
-  full_name: string;
-  rank: string;
-  xp: number;
-  is_verified: boolean;
   nik?: string;
   date_of_birth?: string;
   address?: string;
   home_ownership?: string;
+  occupation?: string;
+  employer_name?: string;
+  job_title?: string;
+  emp_length?: number;
+  annual_income?: number;
   cb_person_cred_hist_length?: number;
+  rank: string;
+  xp: number;
+  is_verified: boolean;
   created_at: string;
 }
 
-interface AuthStore {
-  accessToken: string | null;
-  refreshToken: string | null;
+interface AuthState {
+  token: string | null;
   user: User | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
-  setTokens: (access: string, refresh: string) => Promise<void>;
-  setUser: (user: User) => void;
+  isNewUser: boolean;
+  login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
-  loadTokens: () => Promise<{ access: string | null; refresh: string | null }>;
-  setLoading: (loading: boolean) => void;
+  fetchProfile: () => Promise<void>;
+  setNewUser: (v: boolean) => void;
+  init: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  accessToken: null,
-  refreshToken: null,
+export const useAuthStore = create<AuthState>((set, get) => ({
+  token: null,
   user: null,
+  isAuthenticated: false,
   isLoading: true,
+  isNewUser: false,
 
-  setTokens: async (access, refresh) => {
-    await SecureStore.setItemAsync('access_token', access);
-    await SecureStore.setItemAsync('refresh_token', refresh);
-    set({ accessToken: access, refreshToken: refresh });
+  init: async () => {
+    try {
+      const token = await AsyncStorage.getItem("access_token");
+      if (token) {
+        set({ token, isAuthenticated: true });
+        await get().fetchProfile();
+      }
+    } finally {
+      set({ isLoading: false });
+    }
   },
 
-  setUser: (user) => set({ user }),
+  login: async (token: string) => {
+    await AsyncStorage.setItem("access_token", token);
+    set({ token, isAuthenticated: true });
+    await get().fetchProfile();
+  },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('refresh_token');
-    set({ accessToken: null, refreshToken: null, user: null });
+    await AsyncStorage.removeItem("access_token");
+    set({ token: null, user: null, isAuthenticated: false });
   },
 
-  loadTokens: async () => {
-    const access = await SecureStore.getItemAsync('access_token');
-    const refresh = await SecureStore.getItemAsync('refresh_token');
-    set({ accessToken: access, refreshToken: refresh, isLoading: false });
-    return { access, refresh };
+  fetchProfile: async () => {
+    try {
+      const res = await userService.getMe();
+      set({ user: res.data });
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        await AsyncStorage.removeItem("access_token");
+        set({ token: null, user: null, isAuthenticated: false });
+      }
+    }
   },
 
-  setLoading: (loading) => set({ isLoading: loading }),
+  setNewUser: (v) => set({ isNewUser: v }),
 }));

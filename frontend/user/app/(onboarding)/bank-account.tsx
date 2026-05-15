@@ -1,129 +1,120 @@
-import React, { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Switch, ActivityIndicator,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { userAPI } from '../../services/api';
-import { Colors } from '../../constants/colors';
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { userService } from "@/services/users";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
 
 export default function BankAccountScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { toast, show, hide } = useToast();
+
   const [form, setForm] = useState({
-    bank_name: '',
-    account_number: '',
-    account_holder_name: '',
-    is_primary: true,
+    bank_name: "",
+    account_number: "",
+    account_holder_name: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<Partial<typeof form>>({});
 
-  function update(field: keyof typeof form, val: any) {
-    setForm((f) => ({ ...f, [field]: val }));
-  }
+  const set = (key: keyof typeof form) => (val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
 
-  async function handleSubmit() {
-    if (!form.bank_name || !form.account_number || !form.account_holder_name) {
-      setError('Semua field wajib diisi');
-      return;
-    }
-    setError('');
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!form.bank_name.trim()) e.bank_name = "Nama bank wajib diisi";
+    if (!form.account_number.trim()) e.account_number = "Nomor rekening wajib diisi";
+    if (!form.account_holder_name.trim()) e.account_holder_name = "Nama pemilik rekening wajib diisi";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleNext = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
-      await userAPI.addBankAccount(form);
-      router.replace('/(tabs)/');
-    } catch (e: any) {
-      setError(e?.response?.data?.detail ?? 'Gagal menyimpan. Coba lagi.');
+      await userService.addBankAccount(form);
+      router.push("/(onboarding)/documents");
+    } catch (err: any) {
+      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Feather name="chevron-left" size={22} color={Colors.green} />
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mb-xl">
+          <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
         </TouchableOpacity>
 
-        <Text style={styles.title}>Tambah rekening</Text>
-        <Text style={styles.subtitle}>Rekening untuk pencairan pinjaman</Text>
+        <View className="flex-row gap-xs mb-2xl">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <View
+              key={s}
+              className={`h-1 flex-1 rounded-pill ${s <= 3 ? "bg-ink" : "bg-ink/20"}`}
+            />
+          ))}
+        </View>
 
-        {[
-          { label: 'Nama Bank', field: 'bank_name' as const, placeholder: 'cth: BCA, Mandiri, BNI' },
-          { label: 'Nomor Rekening', field: 'account_number' as const, placeholder: 'Nomor rekening', numeric: true },
-          { label: 'Nama Pemilik Rekening', field: 'account_holder_name' as const, placeholder: 'Sesuai buku tabungan' },
-        ].map(({ label, field, placeholder, numeric }) => (
-          <View key={field}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={styles.inputWrap}>
-              <TextInput
-                style={styles.input}
-                placeholder={placeholder}
-                placeholderTextColor={Colors.gray}
-                value={form[field] as string}
-                onChangeText={(v) => update(field, v)}
-                keyboardType={numeric ? 'numeric' : 'default'}
-              />
-            </View>
-          </View>
-        ))}
+        <Text className="text-2xl font-sans-black text-ink mb-xs">Rekening Bank</Text>
+        <Text className="text-sm text-body mb-2xl">Langkah 3 dari 5 — Untuk pencairan dana</Text>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Jadikan rekening utama</Text>
-          <Switch
-            value={form.is_primary}
-            onValueChange={(v) => update('is_primary', v)}
-            trackColor={{ false: Colors.border, true: Colors.green }}
-            thumbColor={Colors.white}
+        <View className="gap-lg">
+          <Input
+            label="Nama Bank"
+            placeholder="cth. BCA, Mandiri, BRI"
+            value={form.bank_name}
+            onChangeText={set("bank_name")}
+            error={errors.bank_name}
+          />
+          <Input
+            label="Nomor Rekening"
+            placeholder="Nomor rekening bank kamu"
+            keyboardType="number-pad"
+            value={form.account_number}
+            onChangeText={set("account_number")}
+            error={errors.account_number}
+          />
+          <Input
+            label="Nama Pemilik Rekening"
+            placeholder="Sesuai yang terdaftar di bank"
+            value={form.account_holder_name}
+            onChangeText={set("account_holder_name")}
+            error={errors.account_holder_name}
           />
         </View>
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View className="bg-primary-pale rounded-xl p-lg mt-xl">
+          <Text className="text-sm text-positive-deep">
+            Rekening bank kamu akan digunakan untuk menerima dana pinjaman yang disetujui.
+            Pastikan nama sesuai dengan KTP.
+          </Text>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Simpan & Lanjut</Text>}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/')} style={styles.skipBtn}>
-          <Text style={styles.skipText}>Lewati, nanti aja</Text>
-        </TouchableOpacity>
+        <Button label="Lanjut" loading={loading} onPress={handleNext} className="mt-2xl" />
       </ScrollView>
-    </SafeAreaView>
+
+      <Toast {...toast} onHide={hide} />
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { padding: 24, paddingTop: 60, paddingBottom: 40 },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.greenBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 28,
-  },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 28 },
-  label: { color: Colors.grayLight, fontSize: 12, fontWeight: '600', marginBottom: 6, marginTop: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  inputWrap: {
-    backgroundColor: Colors.surface, borderRadius: 12, borderWidth: 1,
-    borderColor: Colors.border, paddingHorizontal: 14, height: 52, justifyContent: 'center',
-  },
-  input: { color: Colors.white, fontSize: 15 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, paddingVertical: 4 },
-  switchLabel: { color: Colors.white, fontSize: 15, fontWeight: '500' },
-  errorText: { color: Colors.red, fontSize: 13, marginTop: 12 },
-  btn: {
-    backgroundColor: Colors.green, borderRadius: 999, height: 52,
-    alignItems: 'center', justifyContent: 'center', marginTop: 32,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  skipBtn: { alignItems: 'center', marginTop: 16 },
-  skipText: { color: Colors.gray, fontSize: 14 },
-});

@@ -1,80 +1,71 @@
-import { useEffect } from 'react';
-import { Text, TextInput } from 'react-native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useRouter, useSegments } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import {
-  useFonts,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  Inter_800ExtraBold,
-} from '@expo-google-fonts/inter';
-import { useAuthStore } from '../store/auth';
-import { userAPI } from '../services/api';
+import "../global.css";
+import React, { useEffect } from "react";
+import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
+import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
+import * as SplashScreen from "expo-splash-screen";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useAuthStore } from "@/store/auth";
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
-  const { loadTokens, setUser, logout } = useAuthStore();
-  const router = useRouter();
+function AuthGate() {
+  const { isAuthenticated, isLoading, isNewUser } = useAuthStore();
   const segments = useSegments();
+  const router = useRouter();
+  const navigationState = useRootNavigationState();
 
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Inter_800ExtraBold,
+  useEffect(() => {
+    if (!navigationState?.key) return;
+    if (isLoading) return;
+
+    const inAuth = segments[0] === "(auth)";
+    const inOnboarding = segments[0] === "(onboarding)";
+
+    if (!isAuthenticated && !inAuth) {
+      router.replace("/(auth)/login");
+    } else if (isAuthenticated && isNewUser && !inOnboarding) {
+      router.replace("/(onboarding)/personal");
+    } else if (isAuthenticated && !isNewUser && inAuth) {
+      router.replace("/(tabs)");
+    }
+  }, [isAuthenticated, isLoading, isNewUser, segments, navigationState?.key]);
+
+  return null;
+}
+
+export default function RootLayout() {
+  const { init } = useAuthStore();
+  const [fontsLoaded, fontError] = useFonts({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      // @ts-ignore
-      Text.defaultProps = { ...(Text.defaultProps ?? {}), style: { fontFamily: 'Inter_400Regular' } };
-      // @ts-ignore
-      TextInput.defaultProps = { ...(TextInput.defaultProps ?? {}), style: { fontFamily: 'Inter_400Regular' } };
+    init();
+  }, []);
+
+  // Hide splash when fonts finish (or fail) — prevents infinite white splash
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
-      bootstrap();
     }
-  }, [fontsLoaded]);
-
-  if (!fontsLoaded) return null;
-
-  async function bootstrap() {
-    const { access } = await loadTokens();
-    if (!access) {
-      router.replace('/(auth)/login');
-      return;
-    }
-    try {
-      const res = await userAPI.getMe();
-      const user = res.data;
-      setUser(user);
-
-      if (!user.is_verified) {
-        router.replace('/(auth)/otp');
-        return;
-      }
-      router.replace('/(tabs)/');
-    } catch {
-      await logout();
-      router.replace('/(auth)/login');
-    }
-  }
+  }, [fontsLoaded, fontError]);
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(onboarding)" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="leaderboard" />
-        <Stack.Screen name="loan-detail" />
-      </Stack>
-    </>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0c0f0b" }}>
+      <SafeAreaProvider>
+        <AuthGate />
+        <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="loan-detail" options={{ animation: "slide_from_bottom" }} />
+          <Stack.Screen name="profile/edit" />
+        </Stack>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

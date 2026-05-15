@@ -1,168 +1,122 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
-} from 'react-native';
-import { useRouter, Link } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { authAPI, userAPI } from '../../services/api';
-import { useAuthStore } from '../../store/auth';
-import { Colors } from '../../constants/colors';
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableOpacity,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { authService } from "@/services/auth";
+import { useAuthStore } from "@/store/auth";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { setTokens, setUser } = useAuthStore();
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPw, setShowPw] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const insets = useSafeAreaInsets();
+  const { login } = useAuthStore();
+  const { toast, show, hide } = useToast();
 
-  async function handleLogin() {
-    if (!phone.trim() || !password.trim()) {
-      setError('Nomor HP dan password wajib diisi');
-      return;
-    }
-    setError('');
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ phone?: string; password?: string }>({});
+
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!phone.trim()) e.phone = "Nomor HP wajib diisi";
+    if (!password) e.password = "Password wajib diisi";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleLogin = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
-      const res = await authAPI.login(phone.trim(), password);
-      const { access_token, refresh_token } = res.data;
-      await setTokens(access_token, refresh_token);
-      const meRes = await userAPI.getMe();
-      setUser(meRes.data);
-      router.replace('/(tabs)/');
-    } catch (e: any) {
-      const msg = e?.response?.data?.detail ?? 'Login gagal. Periksa nomor HP dan password kamu.';
-      setError(typeof msg === 'string' ? msg : 'Login gagal.');
+      const res = await authService.login({ phone: phone.trim(), password });
+      await login(res.data.access_token);
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      const msg = err?.response?.data?.detail ?? "Login gagal. Periksa nomor HP dan password kamu.";
+      show(typeof msg === "string" ? msg : "Login failed.", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
+        {/* Hero band */}
+        <View
+          style={{ paddingTop: insets.top + 48, paddingBottom: 40 }}
+          className="px-xl bg-canvas-soft"
         >
-          {/* Logo */}
-          <View style={styles.logoArea}>
-            <Text style={styles.logo}>Cicilin</Text>
-            <Text style={styles.tagline}>Pinjaman cepat, proses transparan</Text>
+          <View className="mb-xs">
+            <Text className="text-5xl font-sans-black text-ink leading-none tracking-tight">
+              Cicilin.
+            </Text>
+          </View>
+          <Text className="text-base text-body mt-sm">
+            Pinjaman cepat, skor kredit membaik.
+          </Text>
+        </View>
+
+        {/* Form card */}
+        <View className="flex-1 bg-canvas rounded-t-3xl px-xl pt-2xl pb-xl">
+          <Text className="text-2xl font-sans-black text-ink mb-xs">Masuk</Text>
+          <Text className="text-sm text-mute mb-2xl">Selamat datang kembali.</Text>
+
+          <View className="gap-lg">
+            <Input
+              label="Nomor HP"
+              placeholder="08xx xxxx xxxx"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+              error={errors.phone}
+            />
+            <Input
+              label="Password"
+              placeholder="Password kamu"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              error={errors.password}
+            />
           </View>
 
-          {/* Card */}
-          <View style={styles.card}>
-            <Text style={styles.title}>Masuk ke akun kamu</Text>
+          <Button
+            label="Masuk"
+            loading={loading}
+            onPress={handleLogin}
+            className="mt-2xl"
+          />
 
-            {/* Phone */}
-            <View style={styles.inputWrap}>
-              <Feather name="phone" size={18} color={Colors.gray} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Nomor HP (cth: 08xxxxxxxxxx)"
-                placeholderTextColor={Colors.gray}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-              />
-            </View>
-
-            {/* Password */}
-            <View style={styles.inputWrap}>
-              <Feather name="lock" size={18} color={Colors.gray} style={styles.inputIcon} />
-              <TextInput
-                style={[styles.input, styles.inputFlex]}
-                placeholder="Password"
-                placeholderTextColor={Colors.gray}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPw}
-                autoComplete="password"
-              />
-              <TouchableOpacity onPress={() => setShowPw(!showPw)} style={styles.eyeBtn}>
-                <Feather name={showPw ? 'eye-off' : 'eye'} size={18} color={Colors.gray} />
-              </TouchableOpacity>
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-              activeOpacity={0.85}
-            >
-              {loading
-                ? <ActivityIndicator color="#000" />
-                : <Text style={styles.btnText}>Masuk</Text>
-              }
+          <View className="flex-row justify-center mt-xl gap-xs">
+            <Text className="text-sm text-body">Belum punya akun?</Text>
+            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
+              <Text className="text-sm font-sans-semibold text-ink underline">
+                Daftar sekarang
+              </Text>
             </TouchableOpacity>
-
-            <View style={styles.registerRow}>
-              <Text style={styles.grayText}>Belum punya akun? </Text>
-              <Link href="/(auth)/register" asChild>
-                <TouchableOpacity>
-                  <Text style={styles.greenLink}>Daftar</Text>
-                </TouchableOpacity>
-              </Link>
-            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+      </ScrollView>
+
+      <Toast {...toast} onHide={hide} />
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  logoArea: { alignItems: 'center', marginBottom: 40 },
-  logo: { fontSize: 40, fontWeight: '800', color: Colors.green, letterSpacing: -1 },
-  tagline: { color: Colors.gray, fontSize: 14, marginTop: 6 },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  title: { color: Colors.white, fontSize: 20, fontWeight: '700', marginBottom: 24 },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.bg,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: 14,
-    paddingHorizontal: 14,
-    height: 52,
-  },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, color: Colors.white, fontSize: 15 },
-  inputFlex: { flex: 1 },
-  eyeBtn: { padding: 4 },
-  errorText: { color: Colors.red, fontSize: 13, marginBottom: 12 },
-  btn: {
-    backgroundColor: Colors.green,
-    borderRadius: 999,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 20 },
-  grayText: { color: Colors.gray, fontSize: 14 },
-  greenLink: { color: Colors.green, fontSize: 14, fontWeight: '600' },
-});

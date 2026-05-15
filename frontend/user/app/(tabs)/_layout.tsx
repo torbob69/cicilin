@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import TabBar from '../../components/TabBar';
+import { Tabs } from "expo-router";
+import { TabBar } from "@/components/TabBar";
 
 export default function TabsLayout() {
   return (
@@ -7,11 +7,12 @@ export default function TabsLayout() {
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="apply" options={{ title: 'Apply' }} />
-      <Tabs.Screen name="status" options={{ title: 'Status' }} />
-      <Tabs.Screen name="quests" options={{ title: 'Quests' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profil' }} />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="status" />
+      <Tabs.Screen name="apply" options={{ href: null }} />
+      <Tabs.Screen name="quests" />
+      <Tabs.Screen name="profile" />
+      <Tabs.Screen name="leaderboard" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,153 +1,120 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator,
-} from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { questAPI } from '../../services/api';
-import { Colors } from '../../constants/colors';
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, RefreshControl } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { questService } from "@/services/quests";
+import { SkeletonCard } from "@/components/ui/Skeleton";
+
+interface Quest {
+  quest_id: number;
+  title: string;
+  xp_reward: number;
+  completed: boolean;
+  completed_at: string | null;
+}
 
 export default function QuestsScreen() {
-  const [quests, setQuests] = useState<any[]>([]);
-  const [month, setMonth] = useState('');
+  const insets = useSafeAreaInsets();
+  const [quests, setQuests] = useState<Quest[]>([]);
+  const [month, setMonth] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchQuests = useCallback(async () => {
+  const load = async () => {
     try {
-      const res = await questAPI.getActive();
-      setQuests(res.data?.quests ?? res.data ?? []);
-      const now = new Date();
-      setMonth(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
-    } catch {}
-    setLoading(false);
-    setRefreshing(false);
-  }, []);
+      const res = await questService.getActive();
+      setQuests(res.data.quests ?? []);
+      setMonth(`${res.data.year}-${String(res.data.month).padStart(2, "0")}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  useEffect(() => { fetchQuests(); }, []);
+  useEffect(() => { load(); }, []);
 
-  const onRefresh = useCallback(() => { setRefreshing(true); fetchQuests(); }, [fetchQuests]);
+  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const completedCount = quests.filter((q) => q.completed).length;
-
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.safe, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator color={Colors.green} />
-      </SafeAreaView>
-    );
-  }
+  const completed = quests.filter((q) => q.completed).length;
+  const total = quests.length;
+  const pct = total ? completed / total : 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View className="flex-1 bg-canvas-soft">
       <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.green} />}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9fe870" />}
       >
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Misi Bulanan</Text>
-          <Text style={styles.subtitle}>Selesaikan misi untuk dapat XP!</Text>
-          <View style={styles.periodChip}>
-            <Text style={styles.periodText}>{month}</Text>
-          </View>
+        <View className="px-xl mb-lg">
+          <Text className="text-2xl font-sans-black text-ink">Quest Bulanan</Text>
+          {month && (
+            <Text className="text-sm text-mute">
+              {new Date(month + "-01").toLocaleDateString("id-ID", { month: "long", year: "numeric" })}
+            </Text>
+          )}
         </View>
 
-        {/* Progress */}
-        <View style={styles.progressCard}>
-          <View style={styles.progressRow}>
-            <Text style={styles.progressLabel}>Progress</Text>
-            <Text style={styles.progressVal}>{completedCount}/{quests.length} selesai</Text>
+        {/* Progress card */}
+        {!loading && (
+          <View className="mx-xl bg-surface border border-primary/20 rounded-xl p-xl mb-lg">
+            <Text className="text-xs text-primary/60 uppercase tracking-wider mb-sm">Progress bulan ini</Text>
+            <View className="flex-row items-end gap-sm mb-lg">
+              <Text className="text-5xl font-sans-black text-primary leading-none">{completed}</Text>
+              <Text className="text-2xl font-sans-black text-primary/40 leading-none mb-1">/ {total}</Text>
+              <Text className="text-sm text-primary/50 mb-1 ml-xs">selesai</Text>
+            </View>
+            <View className="h-2 bg-white/10 rounded-pill overflow-hidden">
+              <View
+                style={{ width: `${Math.max(pct * 100, total ? 4 : 0)}%` }}
+                className="h-full bg-primary rounded-pill"
+              />
+            </View>
           </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${quests.length ? (completedCount / quests.length) * 100 : 0}%` }]} />
-          </View>
-        </View>
+        )}
 
         {/* Quest list */}
-        {quests.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <Text style={styles.emptyEmoji}>🎯</Text>
-            <Text style={styles.emptyText}>Belum ada misi bulan ini</Text>
-          </View>
-        ) : (
-          quests.map((quest: any, i: number) => (
-            <View key={quest.quest_id ?? i} style={[styles.questCard, quest.completed && styles.questCardDone]}>
-              <View style={styles.questLeft}>
-                <View style={[styles.questNumber, quest.completed && styles.questNumberDone]}>
-                  {quest.completed
-                    ? <Feather name="check" size={14} color={Colors.green} />
-                    : <Text style={styles.questNumberText}>{i + 1}</Text>
-                  }
+        <View className="px-xl gap-sm">
+          {loading ? (
+            <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
+          ) : (
+            quests.map((quest) => (
+              <View
+                key={quest.quest_id}
+                className={`rounded-xl p-lg flex-row items-start gap-md ${quest.completed ? "bg-primary-pale" : "bg-canvas"
+                  }`}
+              >
+                {/* Checkbox */}
+                <View className={`w-6 h-6 rounded-md items-center justify-center flex-shrink-0 mt-xxs ${quest.completed ? "bg-positive" : "border-2 border-ink/20"
+                  }`}>
+                  {quest.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
                 </View>
-                <View style={styles.questContent}>
-                  <Text style={[styles.questTitle, quest.completed && styles.questTitleDone]}>
-                    {quest.title ?? quest.description}
+
+                <View className="flex-1">
+                  <Text className={`text-sm font-sans-semibold leading-5 ${quest.completed ? "text-positive-deep" : "text-ink"
+                    }`}>
+                    {quest.title}
                   </Text>
-                  {quest.completed && quest.completed_at && (
-                    <Text style={styles.completedDate}>
-                      Selesai {new Date(quest.completed_at).toLocaleDateString('id-ID')}
+                  {quest.completed_at && (
+                    <Text className="text-xs text-positive mt-xxs">
+                      Selesai {new Date(quest.completed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                     </Text>
                   )}
                 </View>
+
+                {/* XP badge */}
+                <View className={`rounded-pill px-sm py-xxs flex-shrink-0 ${quest.completed ? "bg-positive/20" : "bg-primary"
+                  }`}>
+                  <Text className={`text-xs font-sans-bold ${quest.completed ? "text-positive-deep" : "text-on-primary"
+                    }`}>
+                    +{quest.xp_reward} XP
+                  </Text>
+                </View>
               </View>
-              <View style={[styles.xpBadge, quest.completed && styles.xpBadgeDone]}>
-                <Text style={styles.xpText}>+{quest.xp_reward}xp</Text>
-              </View>
-            </View>
-          ))
-        )}
+            ))
+          )}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { padding: 20, paddingBottom: 110 },
-  header: { marginBottom: 24 },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 6 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 12 },
-  periodChip: {
-    backgroundColor: Colors.greenGlow, borderWidth: 1, borderColor: Colors.greenBorder,
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start',
-  },
-  periodText: { color: Colors.green, fontSize: 13, fontWeight: '600' },
-  progressCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 20,
-  },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  progressLabel: { color: Colors.gray, fontSize: 13, fontWeight: '600' },
-  progressVal: { color: Colors.white, fontSize: 13, fontWeight: '700' },
-  progressTrack: { height: 6, backgroundColor: Colors.border, borderRadius: 3 },
-  progressFill: { height: 6, backgroundColor: Colors.green, borderRadius: 3 },
-  emptyWrap: { alignItems: 'center', paddingTop: 60 },
-  emptyEmoji: { fontSize: 48, marginBottom: 12 },
-  emptyText: { color: Colors.gray, fontSize: 15 },
-  questCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 12,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  questCardDone: { borderColor: Colors.greenBorder, backgroundColor: 'rgba(34,197,94,0.05)' },
-  questLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1, paddingRight: 8 },
-  questNumber: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.surface2,
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
-  },
-  questNumberDone: { backgroundColor: Colors.greenGlow },
-  questNumberText: { color: Colors.gray, fontSize: 12, fontWeight: '700' },
-  questContent: { flex: 1 },
-  questTitle: { color: Colors.white, fontSize: 14, lineHeight: 20, fontWeight: '500' },
-  questTitleDone: { color: Colors.grayLight },
-  completedDate: { color: Colors.green, fontSize: 11, marginTop: 3 },
-  xpBadge: {
-    backgroundColor: Colors.greenGlow, borderRadius: 999, paddingHorizontal: 10,
-    paddingVertical: 4, flexShrink: 0,
-  },
-  xpBadgeDone: { backgroundColor: 'rgba(34,197,94,0.25)' },
-  xpText: { color: Colors.green, fontSize: 12, fontWeight: '700' },
-});

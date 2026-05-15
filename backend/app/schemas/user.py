@@ -84,6 +84,9 @@ class UserResponse(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
+    full_name: str | None = None
+    nik: str | None = None
+    date_of_birth: date | None = None
     address: str | None = None
     home_ownership: str | None = None
     cb_person_cred_hist_length: int | None = None

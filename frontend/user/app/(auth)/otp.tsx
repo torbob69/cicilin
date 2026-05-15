@@ -1,143 +1,118 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { authAPI, userAPI } from '../../services/api';
-import { useAuthStore } from '../../store/auth';
-import { Colors } from '../../constants/colors';
+  View,
+  Text,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { authService } from "@/services/auth";
+import { useAuthStore } from "@/store/auth";
+import { OtpInput } from "@/components/ui/OtpInput";
+import { Button } from "@/components/ui/Button";
+import { useToast, Toast } from "@/components/ui/Toast";
 
-export default function OTPScreen() {
+export default function OtpScreen() {
   const router = useRouter();
-  const { phone, purpose = 'registration' } = useLocalSearchParams<{ phone: string; purpose: string }>();
-  const { setTokens, setUser } = useAuthStore();
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const insets = useSafeAreaInsets();
+  const { phone, purpose } = useLocalSearchParams<{ phone: string; purpose: string }>();
+  const { setNewUser } = useAuthStore();
+  const { toast, show, hide } = useToast();
+
+  const [code, setCode] = useState("      ");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [resendTimer, setResendTimer] = useState(60);
-  const refs = useRef<(TextInput | null)[]>([]);
+  const [resendCooldown, setResendCooldown] = useState(60);
 
   useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setInterval(() => setResendTimer((n) => n - 1), 1000);
+    if (resendCooldown <= 0) return;
+    const t = setInterval(() => setResendCooldown((c) => c - 1), 1000);
     return () => clearInterval(t);
-  }, [resendTimer]);
+  }, [resendCooldown]);
 
-  function handleDigit(index: number, val: string) {
-    const cleaned = val.replace(/\D/g, '').slice(-1);
-    const next = [...code];
-    next[index] = cleaned;
-    setCode(next);
-    if (cleaned && index < 5) refs.current[index + 1]?.focus();
-    if (!cleaned && index > 0) refs.current[index - 1]?.focus();
-  }
-
-  async function handleVerify() {
-    const fullCode = code.join('');
-    if (fullCode.length < 6) { setError('Masukkan 6 digit kode OTP'); return; }
-    setError('');
+  const handleVerify = async () => {
+    const trimmed = code.trim();
+    if (trimmed.length < 6) {
+      show("Masukkan kode OTP 6 digit", "error");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await authAPI.verifyOTP(phone, fullCode, purpose);
-      const { access_token, refresh_token } = res.data;
-      await setTokens(access_token, refresh_token);
-      const meRes = await userAPI.getMe();
-      setUser(meRes.data);
-      router.replace('/(onboarding)/set-pin');
-    } catch (e: any) {
-      const detail = e?.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Kode OTP salah atau kadaluarsa.');
+      await authService.verifyOtp({ phone, code: trimmed, purpose });
+      if (purpose === "register") {
+        setNewUser(true);
+        router.replace("/(onboarding)/personal");
+      } else {
+        router.back();
+      }
+    } catch (err: any) {
+      show(err?.response?.data?.detail ?? "Kode OTP tidak valid", "error");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleResend() {
-    if (resendTimer > 0) return;
+  const handleResend = async () => {
+    if (resendCooldown > 0) return;
     try {
-      await authAPI.resendOTP(phone);
-      setResendTimer(60);
-    } catch {}
-  }
+      await authService.resendOtp({ phone, purpose });
+      setResendCooldown(60);
+      show("OTP telah dikirim ulang ke WhatsApp kamu", "success");
+    } catch {
+      show("Gagal mengirim ulang OTP", "error");
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.container}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Feather name="chevron-left" size={22} color={Colors.green} />
-          </TouchableOpacity>
+    <KeyboardAvoidingView
+      className="flex-1 bg-canvas-soft"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View
+        style={{ paddingTop: insets.top + 32 }}
+        className="flex-1 px-xl"
+      >
+        <TouchableOpacity onPress={() => router.back()} className="mb-2xl">
+          <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
+        </TouchableOpacity>
 
-          <Text style={styles.title}>Masukkin kode OTP</Text>
-          <Text style={styles.subtitle}>
-            Kode dikirim ke <Text style={{ color: Colors.white }}>{phone}</Text> via WhatsApp
-          </Text>
+        <Text className="text-4xl font-sans-black text-ink leading-tight mb-sm">
+          Verifikasi{"\n"}nomormu.
+        </Text>
+        <Text className="text-base text-body mb-3xl">
+          Kami mengirim kode 6 digit ke{"\n"}
+          <Text className="font-sans-semibold text-ink">{phone}</Text> via WhatsApp.
+        </Text>
 
-          <View style={styles.dotsRow}>
-            {code.map((digit, i) => (
-              <TextInput
-                key={i}
-                ref={(r) => { refs.current[i] = r; }}
-                style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
-                value={digit}
-                onChangeText={(v) => handleDigit(i, v)}
-                keyboardType="number-pad"
-                maxLength={2}
-                textAlign="center"
-                selectionColor={Colors.green}
-              />
-            ))}
-          </View>
+        <OtpInput
+          value={code}
+          onChange={setCode}
+          length={6}
+        />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Button
+          label="Verifikasi"
+          loading={loading}
+          onPress={handleVerify}
+          className="mt-2xl"
+        />
 
-          <TouchableOpacity
-            style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleVerify}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.btnText}>Verifikasi</Text>}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleResend} disabled={resendTimer > 0} style={styles.resendBtn}>
-            <Text style={[styles.resendText, resendTimer > 0 && styles.resendDisabled]}>
-              {resendTimer > 0 ? `Kirim ulang dalam ${resendTimer}s` : 'Kirim ulang kode'}
+        <View className="flex-row justify-center mt-lg gap-xs">
+          <Text className="text-sm text-body">Tidak menerima kode?</Text>
+          <TouchableOpacity onPress={handleResend} disabled={resendCooldown > 0}>
+            <Text
+              className={`text-sm font-sans-semibold ${resendCooldown > 0 ? "text-mute" : "text-ink"
+                }`}
+            >
+              {resendCooldown > 0 ? `Kirim ulang dalam ${resendCooldown}d` : "Kirim Ulang OTP"}
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+
+      <Toast {...toast} onHide={hide} />
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bg },
-  flex: { flex: 1 },
-  container: { flex: 1, padding: 24, paddingTop: 60 },
-  backBtn: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
-    borderColor: Colors.greenBorder, alignItems: 'center', justifyContent: 'center', marginBottom: 28,
-  },
-  title: { color: Colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: Colors.gray, fontSize: 15, marginBottom: 36 },
-  dotsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
-  otpBox: {
-    width: 48, height: 56, borderRadius: 12, borderWidth: 1.5, borderColor: Colors.border,
-    backgroundColor: Colors.surface, color: Colors.white, fontSize: 22, fontWeight: '700',
-  },
-  otpBoxFilled: { borderColor: Colors.green },
-  errorText: { color: Colors.red, fontSize: 13, marginBottom: 12 },
-  btn: {
-    backgroundColor: Colors.green, borderRadius: 999, height: 52,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  btnDisabled: { opacity: 0.6 },
-  btnText: { color: '#000', fontSize: 16, fontWeight: '700' },
-  resendBtn: { alignItems: 'center', marginTop: 20 },
-  resendText: { color: Colors.green, fontSize: 14, fontWeight: '600' },
-  resendDisabled: { color: Colors.gray },
-});

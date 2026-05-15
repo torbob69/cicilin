@@ -1,45 +1,37 @@
 {
   "expo": {
     "name": "Cicilin",
-    "slug": "cicilin",
+    "slug": "cicilin-user",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "cicilin",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0a0a"
+      "backgroundColor": "#0c0f0b"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cicilin.app"
+      "bundleIdentifier": "com.cicilin.user"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0a0a0a"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#0c0f0b"
       },
-      "package": "com.cicilin.app"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/favicon.png"
+      "package": "com.cicilin.user"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
+      "expo-font",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Cicilin to access your photos for KYC document upload."
+          "photosPermission": "Cicilin needs access to your photos for KYC document upload.",
+          "cameraPermission": "Cicilin needs access to your camera for liveness check."
         }
-      ],
-      "expo-font",
-      "expo-asset"
+      ]
     ],
+    "scheme": "cicilin",
     "experiments": {
       "typedRoutes": true
     }
