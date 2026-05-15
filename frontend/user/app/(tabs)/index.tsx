@@ -63,25 +63,13 @@ function XpBar({ rank, xp }: { rank: string; xp: number }) {
   );
 }
 
-function QuickAction({
-  icon, label, onPress, accent = false,
-}: {
-  icon: IoniconName; label: string; onPress: () => void; accent?: boolean;
-}) {
+function QuickAction({ icon, label, onPress }: { icon: IoniconName; label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      className={`flex-1 rounded-xl p-md items-center gap-xs border ${accent ? "bg-primary border-primary" : "bg-canvas border-white/[0.06]"
-        }`}
-    >
-      <Ionicons name={icon} size={18} color={accent ? "#0e0f0c" : "#e8ebe6"} />
-      <Text
-        className={`text-xs font-sans-medium text-center ${accent ? "text-on-primary" : "text-ink"
-          }`}
-      >
-        {label}
-      </Text>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} className="flex-1 items-center gap-xs">
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: "#9fe870", alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name={icon} size={18} color="#0e0f0c" />
+      </View>
+      <Text className="text-xs font-sans-medium text-ink">{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -165,6 +153,21 @@ export default function HomeScreen() {
   const firstName = user?.full_name?.split(" ")[0] ?? "there";
   const activeLoans = loans.filter((l) => ["approved", "disbursed"].includes(l.loan_status));
 
+  const fullLimit = RANK_LIMIT[rank] ?? 0;
+  const now = new Date();
+  const usedLimit = loans
+    .filter((l) => {
+      const d = new Date(l.created_at);
+      return (
+        ["approved", "disbursed"].includes(l.loan_status) &&
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth()
+      );
+    })
+    .reduce((sum, l) => sum + (l.loan_amnt ?? 0), 0);
+  const remainingLimit = Math.max(fullLimit - usedLimit, 0);
+  const cardId = `${rank[0]} ${rank[0]} ${(user?.id ?? 0).toString().padStart(4, "0").slice(-4)}`;
+
   return (
     <View className="flex-1 bg-canvas-soft">
       <ScrollView
@@ -173,55 +176,69 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9fe870" />}
       >
         {/* ─── Header ─── */}
-        <View style={{ paddingTop: insets.top + 20 }} className="px-xl pb-lg">
+        <View style={{ paddingTop: insets.top + 48 }} className="px-xl pb-lg">
           {user ? (
-            <Text className="text-2xl font-sans-bold text-ink">Hi, {firstName}</Text>
+            <Text className="text-white" style={{ fontFamily: "PixelifySans_400Regular", fontSize: 32}}>Hi, {firstName}</Text>
           ) : (
             <Skeleton height={28} width="40%" rounded="md" style={{ marginTop: 4 }} />
           )}
         </View>
 
-        {/* ─── Rank Card ─── */}
+        {/* ─── Rank & Limit Section ─── */}
         {rankLoading ? (
           <View className="mx-xl">
-            <Skeleton height={160} rounded="xl" />
+            <Skeleton height={200} rounded="xl" />
           </View>
         ) : (
-          <View
-            className="mx-xl rounded-2xl overflow-hidden"
-            style={{ backgroundColor: rankColors[rank]?.bg ?? "#161915" }}
-          >
-            <View className="px-xl pt-xl pb-md flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff", opacity: 0.7 }} className="text-xs mb-xxs tracking-wider uppercase font-sans-medium">Rank</Text>
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff" }} className="text-4xl font-sans-black leading-tight tracking-tight">{rank}</Text>
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff", opacity: 0.6 }} className="text-sm font-sans-medium mt-xxs">{xp.toLocaleString("id-ID")} XP</Text>
-              </View>
-              <RankBadge rank={rank} size={72} />
+          <View className="mx-xl">
+            {/* Remaining limit */}
+            <View className="mb-lg">
+              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 10, fontFamily: "DMSans_500Medium", letterSpacing: 0, marginBottom: 4 }}>
+                Sisa limit bulan ini
+              </Text>
+              <Text style={{ color: "#fff", fontSize: 28, fontFamily: "DMSans_700Bold", letterSpacing: -0.5 }}>
+                Rp {remainingLimit.toLocaleString("id-ID")}
+              </Text>
             </View>
 
-            <View className="px-xl pb-lg">
-              <XpBar rank={rank} xp={xp} />
-            </View>
+            {/* Two-card row */}
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              {/* Left — rank card */}
+              <View style={{ flex: 1, backgroundColor: "#1a1a1a", borderRadius: 16, padding: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                  <RankBadge rank={rank} size={48} />
+                  <View>
+                    <Text style={{ color: "#fff", fontSize: 18, fontFamily: "DMSans_700Bold", lineHeight: 22 }}>{rank}</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontFamily: "DMSans_400Regular" }}>Bunga {RANK_RATE[rank] ?? 0}%</Text>
+                  </View>
+                </View>
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontFamily: "DMSans_400Regular", marginBottom: 2 }}>
+                  Max limit
+                </Text>
+                <Text style={{ color: "#fff", fontSize: 16, fontFamily: "DMSans_600SemiBold" }}>
+                  Rp {fullLimit.toLocaleString("id-ID")}
+                </Text>
+              </View>
 
-            <View style={{ backgroundColor: 'rgba(0,0,0,0.15)' }} className="flex-row">
-              <View className="flex-1 px-xl py-md border-r border-black/10">
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff", opacity: 0.7 }} className="text-xs mb-xxs">Limit bulanan</Text>
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff" }} className="text-sm font-sans-bold">{formatIDR(RANK_LIMIT[rank] ?? 0)}</Text>
-              </View>
-              <View className="flex-1 px-xl py-md">
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff", opacity: 0.7 }} className="text-xs mb-xxs">Bunga</Text>
-                <Text style={{ color: rankColors[rank]?.text ?? "#fff" }} className="text-sm font-sans-bold">{RANK_RATE[rank] ?? 0}%</Text>
-              </View>
+              {/* Right — apply button */}
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/apply")}
+                activeOpacity={0.7}
+                style={{ width: 110, backgroundColor: "rgba(159,232,112,0.15)", borderRadius: 16, borderWidth: 2, borderColor: "rgba(159,232,112,0.5)", borderStyle: "dashed", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <Ionicons name="add" size={28} color="rgba(255,255,255,1)" />
+                <Text style={{ color: "rgba(255,255,255,1)", fontSize: 12, fontFamily: "DMSans_500Medium" }}>Ajukan</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
         {/* ─── Quick Actions ─── */}
-        <View className="px-xl mt-lg flex-row gap-sm">
-          <QuickAction icon="card-outline" label="Ajukan" onPress={() => router.push("/(tabs)/apply")} accent />
-          <QuickAction icon="receipt-outline" label="Status" onPress={() => router.push("/(tabs)/status")} />
+        <View className="px-xl mt-2xl flex-row gap-sm">
+          <QuickAction icon="ribbon-outline" label="Quest" onPress={() => router.push("/(tabs)/quests")} />
           <QuickAction icon="trophy-outline" label="Rank" onPress={() => router.push("/(tabs)/leaderboard")} />
+          <QuickAction icon="time-outline" label="Riwayat" onPress={() => router.push("/(tabs)/status")} />
+
         </View>
 
         {/* ─── Next Due Payment ─── */}
@@ -238,17 +255,8 @@ export default function HomeScreen() {
               activeOpacity={0.85}
               onPress={() => router.push({ pathname: "/loan-detail", params: { id: loanId } })}
             >
-              <View className={`px-lg py-md flex-row items-center justify-between border`}>
+              <View className={`py-md flex-row items-center justify-between`}>
                 <View className="flex-row items-center gap-md flex-1">
-                  {/* <View className={`w-9 h-9 rounded-full items-center justify-center ${
-                    isOverdue ? "bg-negative/20" : dueSoon ? "bg-warning/20" : "bg-primary/20"
-                  }`}>
-                    <Ionicons
-                      name={isOverdue ? "warning-outline" : "calendar-outline"}
-                      size={16}
-                      color={isOverdue ? "#f87171" : dueSoon ? "#ffd11a" : "#9fe870"}
-                    />
-                  </View> */}
                   <View className="flex-1">
                     <Text className={`text-sm text-white font-sans-semibold ${
                       isOverdue ? "text-negative" : dueSoon ? "text-warning" : "text-mute"
@@ -279,41 +287,6 @@ export default function HomeScreen() {
           );
         })()}
 
-        {/* ─── Leaderboard ─── */}
-        {leaderboard.length > 0 && (
-          <View className="px-xl mt-xl">
-            <View className="flex-row items-center justify-between mb-sm">
-              <Text className="text-xl font-sans-semibold text-ink">Leaderboard</Text>
-              <TouchableOpacity onPress={() => router.push("/(tabs)/leaderboard")}>
-                <Text className="text-xs font-sans-semibold text-primary">Lihat semua</Text>
-              </TouchableOpacity>
-            </View>
-            <View className="bg-canvas rounded-xl overflow-hidden border border-white/[0.06]">
-              {leaderboard.map((entry, i) => {
-                const isMe = entry.full_name === user?.full_name;
-                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-                return (
-                  <View
-                    key={entry.rank_position}
-                    className={`flex-row items-center px-lg py-md ${i < leaderboard.length - 1 ? "border-b border-white/[0.04]" : ""} ${isMe ? "bg-primary/10" : ""}`}
-                  >
-                    <Text className="text-sm font-sans-bold text-mute w-6">
-                      {medal ?? `${entry.rank_position}`}
-                    </Text>
-                    <View className="flex-1 ml-md">
-                      <Text className={`text-sm font-sans-semibold ${isMe ? "text-primary" : "text-ink"}`} numberOfLines={1}>
-                        {entry.full_name}{isMe ? " (Kamu)" : ""}
-                      </Text>
-                      <Text className="text-xs text-mute">{entry.rank}</Text>
-                    </View>
-                    <Text className="text-sm font-sans-bold text-ink">{entry.xp.toLocaleString("id-ID")} XP</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
         {/* ─── Active Loans ─── */}
         <View className="px-xl mt-xl">
           <Text className="text-xl font-sans-semibold text-ink mb-sm">Pinjaman Aktif</Text>
@@ -323,7 +296,7 @@ export default function HomeScreen() {
               <SkeletonCard /><SkeletonCard />
             </View>
           ) : activeLoans.length === 0 ? (
-            <View className="bg-canvas rounded-xl px-xl py-2xl items-center gap-sm border border-white/[0.06]">
+            <View className="rounded-xl px-xl py-2xl items-center gap-sm border">
               <Text className="text-sm text-mute text-center">Belum ada pinjaman aktif</Text>
               <TouchableOpacity
                 onPress={() => router.push("/(tabs)/apply")}
@@ -338,25 +311,24 @@ export default function HomeScreen() {
                 key={loan.id}
                 onPress={() => router.push({ pathname: "/loan-detail", params: { id: loan.id } })}
                 activeOpacity={0.85}
-                className="bg-canvas rounded-xl p-lg mb-sm border border-white/[0.06]"
+                className="rounded-xl p-lg mb-sm"
               >
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1">
-                    <Text className="text-xs text-mute capitalize mb-xxs">
+                    <Text className="text-xs text-body font-light capitalize mb-xxs">
                       {loan.loan_intent.replace("HOMEIMPROVEMENT", "Home Renovation").replace("DEBTCONSOLIDATION", "Debt Consol.").toLowerCase()}
                     </Text>
                     <Text className="text-base font-sans-bold text-ink">{formatIDRFull(loan.loan_amnt)}</Text>
                     <Text className="text-xs text-body mt-xxs">
-                      Total {formatIDRFull(loan.monthly_installment * loan.tenure_months)} · {loan.tenure_months} bulan
+                      Total {formatIDRFull(loan.monthly_installment * loan.tenure_months)} dalam {loan.tenure_months} bulan
                     </Text>
                   </View>
                   <View className="items-end gap-xs">
-                    <View className="bg-primary-pale rounded-pill px-md py-xxs">
-                      <Text className="text-xs font-sans-semibold text-positive-deep">
+                    <View className="rounded-pill px-md py-xxs">
+                      <Text className="text-xs font-sans-semibold text-primary">
                         {loan.loan_status === "disbursed" ? "Aktif" : "Disetujui"}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={14} color="#525550" />
                   </View>
                 </View>
               </TouchableOpacity>
