@@ -43,8 +43,9 @@ export function Button({
   fullWidth = true,
   size = "md",
   disabled,
+  className,
   ...props
-}: Props) {
+}: Props & { className?: string }) {
   const v = variantStyles[variant];
   const sizeClass = size === "sm" ? "px-md py-xs" : "px-xl py-md";
 
@@ -54,6 +55,7 @@ export function Button({
         ${v.container} ${sizeClass} rounded-xl items-center justify-center
         ${fullWidth ? "w-full" : ""}
         ${disabled || loading ? "opacity-50" : ""}
+        ${className ?? ""}
       `}
       disabled={disabled || loading}
       activeOpacity={0.8}

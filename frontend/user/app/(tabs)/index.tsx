@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/auth";
 import { useLoansStore, Repayment } from "@/store/loans";
+import { useLoanSheet } from "@/store/loanSheet";
 import { userService } from "@/services/users";
 import { loanService } from "@/services/loans";
 import { RankBadge } from "@/components/RankBadge";
@@ -86,6 +87,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { user, fetchProfile, logout } = useAuthStore();
   const { loans, fetchLoans, isLoading: loansLoading } = useLoansStore();
+  const { open: openLoanSheet } = useLoanSheet();
   const [rankData, setRankData] = useState<any>(null);
   const [rankLoading, setRankLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -253,10 +255,11 @@ export default function HomeScreen() {
             <TouchableOpacity
               className="mx-xl mt-xl"
               activeOpacity={0.85}
-              onPress={() => router.push({ pathname: "/loan-detail", params: { id: loanId } })}
+              onPress={() => openLoanSheet(loanId)}
             >
-              <View className={`py-md flex-row items-center justify-between`}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: 16 }}>
                 <View className="flex-row items-center gap-md flex-1">
+                  
                   <View className="flex-1">
                     <Text className={`text-sm text-white font-sans-semibold ${
                       isOverdue ? "text-negative" : dueSoon ? "text-warning" : "text-mute"
@@ -277,6 +280,7 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 </View>
+
                 <View className={`rounded-lg px-md py-xs ${isOverdue ? "bg-negative" : "bg-primary"}`}>
                   <Text className={`text-xs font-sans-semibold ${isOverdue ? "text-white" : "text-on-primary"}`}>
                     Bayar
@@ -309,7 +313,7 @@ export default function HomeScreen() {
             activeLoans.map((loan) => (
               <TouchableOpacity
                 key={loan.id}
-                onPress={() => router.push({ pathname: "/loan-detail", params: { id: loan.id } })}
+                onPress={() => openLoanSheet(loan.id)}
                 activeOpacity={0.85}
                 className="rounded-xl p-lg mb-sm"
               >

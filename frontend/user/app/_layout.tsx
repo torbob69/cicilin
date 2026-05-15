@@ -2,6 +2,7 @@ import "../global.css";
 import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
+import { PixelifySans_400Regular } from "@expo-google-fonts/pixelify-sans";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -41,6 +42,7 @@ export default function RootLayout() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     DMSans_700Bold,
+    PixelifySans_400Regular,
   });
 
   useEffect(() => {
@@ -62,8 +64,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="loan-detail" options={{ animation: "slide_from_bottom" }} />
-          <Stack.Screen name="profile/edit" />
+<Stack.Screen name="profile/edit" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

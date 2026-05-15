@@ -15,6 +15,7 @@ import { useAuthStore } from "@/store/auth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 import { HOME_OWNERSHIP_OPTIONS } from "@/constants/config";
 
 export default function EditProfileScreen() {
@@ -45,7 +46,7 @@ export default function EditProfileScreen() {
       show("Profile updated", "success");
       setTimeout(() => router.back(), 600);
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Update failed", "error");
+      show(parseApiError(err, "Update failed"), "error");
     } finally {
       setLoading(false);
     }

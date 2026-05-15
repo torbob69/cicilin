@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { loanService } from "@/services/loans";
+import { parseApiError } from "@/utils/api";
 
 export default function WaitingScreen() {
   const router = useRouter();
@@ -46,10 +47,9 @@ export default function WaitingScreen() {
           },
         });
       } catch (err: any) {
-        const msg = err?.response?.data?.detail ?? "Application failed";
         router.replace({
           pathname: "/(tabs)/apply/result",
-          params: { status: "error", message: typeof msg === "string" ? msg : JSON.stringify(msg) },
+          params: { status: "error", message: parseApiError(err, "Application failed") },
         });
       }
     };

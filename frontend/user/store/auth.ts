@@ -19,6 +19,7 @@ export interface User {
   cb_person_cred_hist_length?: number;
   rank: string;
   xp: number;
+  has_pin: boolean;
   is_verified: boolean;
   created_at: string;
 }

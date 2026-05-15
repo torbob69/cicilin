@@ -1,23 +1,22 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { SvgProps } from "react-native-svg";
 
-import RubySvg     from "@/assets/badges/ruby.svg";
-import DiamondSvg  from "@/assets/badges/diamond.svg";
-import PlatinumSvg from "@/assets/badges/platinum.svg";
-import GoldSvg     from "@/assets/badges/gold.svg";
-import SilverSvg   from "@/assets/badges/silver.svg";
-import BronzeSvg   from "@/assets/badges/bronze.svg";
-import IronSvg     from "@/assets/badges/iron.svg";
+import RubyBadge     from "@/components/badges/RubyBadge";
+import DiamondBadge  from "@/components/badges/DiamondBadge";
+import PlatinumBadge from "@/components/badges/PlatinumBadge";
+import GoldBadge     from "@/components/badges/GoldBadge";
+import SilverBadge   from "@/components/badges/SilverBadge";
+import BronzeBadge   from "@/components/badges/BronzeBadge";
+import IronBadge     from "@/components/badges/IronBadge";
 
-const BADGE_MAP: Record<string, React.FC<SvgProps>> = {
-  Ruby:     RubySvg,
-  Diamond:  DiamondSvg,
-  Platinum: PlatinumSvg,
-  Gold:     GoldSvg,
-  Silver:   SilverSvg,
-  Bronze:   BronzeSvg,
-  Iron:     IronSvg,
+const BADGE_MAP: Record<string, React.FC<{ size?: number }>> = {
+  Ruby:     RubyBadge,
+  Diamond:  DiamondBadge,
+  Platinum: PlatinumBadge,
+  Gold:     GoldBadge,
+  Silver:   SilverBadge,
+  Bronze:   BronzeBadge,
+  Iron:     IronBadge,
 };
 
 interface Props {
@@ -27,14 +26,13 @@ interface Props {
 }
 
 export function RankBadge({ rank, size = 48, showLabel = false }: Props) {
-  const BadgeSvg = BADGE_MAP[rank];
+  const BadgeComponent = BADGE_MAP[rank];
 
   return (
     <View className="items-center gap-xs">
-      {BadgeSvg ? (
-        <BadgeSvg width={size} height={size} />
+      {BadgeComponent ? (
+        <BadgeComponent size={size} />
       ) : (
-        // Fallback if rank name doesn't match any file
         <View
           style={{ width: size, height: size, borderRadius: size * 0.25 }}
           className="bg-canvas-soft items-center justify-center"

@@ -14,6 +14,7 @@ import { userService } from "@/services/users";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 import { HOME_OWNERSHIP_OPTIONS } from "@/constants/config";
 
 export default function PersonalScreen() {
@@ -60,7 +61,7 @@ export default function PersonalScreen() {
       });
       router.push("/(onboarding)/employment");
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
+      show(parseApiError(err, "Gagal menyimpan"), "error");
     } finally {
       setLoading(false);
     }

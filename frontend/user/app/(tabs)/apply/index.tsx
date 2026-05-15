@@ -154,7 +154,7 @@ export default function ApplyAmountScreen() {
         </View>
         {errors.intent && <Text className="text-xs text-negative mb-md">{errors.intent}</Text>}
 
-        <Button label="Lanjut" onPress={handleNext} className="mt-lg" />
+        <Button label="Lanjut" onPress={handleNext} className="mt-lg text-primary" />
       </ScrollView>
     </KeyboardAvoidingView>
   );

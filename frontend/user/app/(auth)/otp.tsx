@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth";
 import { OtpInput } from "@/components/ui/OtpInput";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function OtpScreen() {
   const router = useRouter();
@@ -41,14 +42,14 @@ export default function OtpScreen() {
     setLoading(true);
     try {
       await authService.verifyOtp({ phone, code: trimmed, purpose });
-      if (purpose === "register") {
+      if (purpose === "registration") {
         setNewUser(true);
         router.replace("/(onboarding)/personal");
       } else {
         router.back();
       }
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Kode OTP tidak valid", "error");
+      show(parseApiError(err, "Kode OTP tidak valid"), "error");
     } finally {
       setLoading(false);
     }

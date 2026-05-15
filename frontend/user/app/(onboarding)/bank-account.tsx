@@ -14,6 +14,7 @@ import { userService } from "@/services/users";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function BankAccountScreen() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function BankAccountScreen() {
       await userService.addBankAccount(form);
       router.push("/(onboarding)/documents");
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
+      show(parseApiError(err, "Gagal menyimpan"), "error");
     } finally {
       setLoading(false);
     }

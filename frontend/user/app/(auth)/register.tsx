@@ -14,6 +14,7 @@ import { authService } from "@/services/auth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -52,11 +53,10 @@ export default function RegisterScreen() {
       });
       router.push({
         pathname: "/(auth)/otp",
-        params: { phone: form.phone.trim(), purpose: "register" },
+        params: { phone: form.phone.trim(), purpose: "registration" },
       });
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Pendaftaran gagal.";
-      show(typeof msg === "string" ? msg : JSON.stringify(msg), "error");
+      show(parseApiError(err, "Pendaftaran gagal."), "error");
     } finally {
       setLoading(false);
     }

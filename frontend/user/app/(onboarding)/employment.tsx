@@ -14,6 +14,7 @@ import { userService } from "@/services/users";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function EmploymentScreen() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function EmploymentScreen() {
       });
       router.push("/(onboarding)/bank-account");
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Gagal menyimpan", "error");
+      show(parseApiError(err, "Gagal menyimpan"), "error");
     } finally {
       setLoading(false);
     }

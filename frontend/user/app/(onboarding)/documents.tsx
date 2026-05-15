@@ -14,10 +14,11 @@ import * as ImagePicker from "expo-image-picker";
 import { userService } from "@/services/users";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 type DocKey = "ktp" | "kk" | "selfie" | "bank_letter";
 
-const DOC_CONFIG: Record<DocKey, { label: string; hint: string; upload: (fd: FormData) => Promise<any> }> = {
+const DOC_CONFIG: Record<DocKey, { label: string; hint: string; upload: (uri: string) => Promise<any> }> = {
   ktp: { label: "KTP", hint: "Foto KTP yang jelas", upload: userService.uploadKtp },
   kk: { label: "Kartu Keluarga", hint: "Foto Kartu Keluarga yang jelas", upload: userService.uploadKk },
   selfie: { label: "Selfie Liveness", hint: "Selfie sambil memegang KTP di samping wajah", upload: userService.uploadSelfie },
@@ -53,17 +54,11 @@ export default function DocumentsScreen() {
     setLoading((p) => ({ ...p, [key]: true }));
 
     try {
-      const formData = new FormData();
-      formData.append("file", {
-        uri: asset.uri,
-        name: `${key}.jpg`,
-        type: "image/jpeg",
-      } as any);
-      await DOC_CONFIG[key].upload(formData);
+      await DOC_CONFIG[key].upload(asset.uri);
       setUploaded((p) => ({ ...p, [key]: true }));
       show(`${DOC_CONFIG[key].label} uploaded`, "success");
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Gagal mengunggah", "error");
+      show(parseApiError(err, "Gagal mengunggah"), "error");
       setUris((p) => ({ ...p, [key]: undefined }));
     } finally {
       setLoading((p) => ({ ...p, [key]: false }));

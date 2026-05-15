@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth";
 import { OtpInput } from "@/components/ui/OtpInput";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function SetPinScreen() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function SetPinScreen() {
       show("PIN berhasil dibuat! Selamat datang di Cicilin.", "success");
       setTimeout(() => router.replace("/(tabs)"), 800);
     } catch (err: any) {
-      show(err?.response?.data?.detail ?? "Gagal membuat PIN", "error");
+      show(parseApiError(err, "Gagal membuat PIN"), "error");
     } finally {
       setLoading(false);
     }

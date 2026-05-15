@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { questService } from "@/services/quests";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 
@@ -11,6 +10,40 @@ interface Quest {
   xp_reward: number;
   completed: boolean;
   completed_at: string | null;
+}
+
+function QuestRow({ quest, isLast }: { quest: Quest; isLast: boolean }) {
+  return (
+    <View
+      style={{ borderBottomWidth: isLast ? 0 : 1, borderBottomColor: "rgba(255,255,255,0.06)" }}
+      className="p-lg flex-row items-center justify-between"
+    >
+      <View className="flex-1">
+        <Text style={{
+          fontSize: 11,
+          fontFamily: "DMSans_600SemiBold",
+          color: quest.completed ? "#4ade80" : "#9fe870",
+          opacity: quest.completed ? 0.5 : 1,
+          marginBottom: 2,
+        }}>
+          +{quest.xp_reward} XP
+        </Text>
+        <Text
+          className="text-sm font-sans-semibold text-ink leading-5"
+          style={{ opacity: quest.completed ? 0.5 : 1 }}
+        >
+          {quest.title}
+        </Text>
+        {quest.completed_at ? (
+          <Text style={{ color: "#4ade80", fontSize: 11, marginTop: 2 }}>
+            Selesai {new Date(quest.completed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+          </Text>
+        ) : (
+          <Text className="text-xs text-mute" style={{ marginTop: 2 }}>Belum selesai</Text>
+        )}
+      </View>
+    </View>
+  );
 }
 
 export default function QuestsScreen() {
@@ -31,7 +64,6 @@ export default function QuestsScreen() {
   };
 
   useEffect(() => { load(); }, []);
-
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const completed = quests.filter((q) => q.completed).length;
@@ -42,11 +74,11 @@ export default function QuestsScreen() {
     <View className="flex-1 bg-canvas-soft">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: insets.top + 48, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9fe870" />}
       >
         {/* Header */}
-        <View className="px-xl mb-lg">
+        <View className="px-xl pb-sm">
           <Text className="text-2xl font-sans-black text-ink">Quest Bulanan</Text>
           {month && (
             <Text className="text-sm text-mute">
@@ -55,62 +87,32 @@ export default function QuestsScreen() {
           )}
         </View>
 
-        {/* Progress card */}
-        {!loading && (
-          <View className="mx-xl bg-surface border border-primary/20 rounded-xl p-xl mb-lg">
-            <Text className="text-xs text-primary/60 uppercase tracking-wider mb-sm">Progress bulan ini</Text>
-            <View className="flex-row items-end gap-sm mb-lg">
-              <Text className="text-5xl font-sans-black text-primary leading-none">{completed}</Text>
-              <Text className="text-2xl font-sans-black text-primary/40 leading-none mb-1">/ {total}</Text>
-              <Text className="text-sm text-primary/50 mb-1 ml-xs">selesai</Text>
+        {/* Progress bar */}
+        {!loading && total > 0 && (
+          <View className="px-xl mt-lg mb-lg">
+            <View className="flex-row justify-between items-center mb-xs">
+              <Text className="text-xs text-mute">{completed} dari {total} selesai</Text>
+              <Text className="text-xs font-sans-semibold text-primary">{Math.round(pct * 100)}%</Text>
             </View>
-            <View className="h-2 bg-white/10 rounded-pill overflow-hidden">
-              <View
-                style={{ width: `${Math.max(pct * 100, total ? 4 : 0)}%` }}
-                className="h-full bg-primary rounded-pill"
-              />
+            <View style={{ height: 3, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden" }}>
+              <View style={{ width: `${Math.max(pct * 100, total ? 2 : 0)}%`, height: "100%", backgroundColor: "#9fe870", borderRadius: 99 }} />
             </View>
           </View>
         )}
 
         {/* Quest list */}
-        <View className="px-xl gap-sm">
+        <View className="px-xl mt-xs">
           {loading ? (
-            <><SkeletonCard /><SkeletonCard /><SkeletonCard /></>
+            <View className="gap-sm">
+              <SkeletonCard /><SkeletonCard /><SkeletonCard />
+            </View>
+          ) : quests.length === 0 ? (
+            <View className="mt-sm rounded-xl p-xl">
+              <Text className="text-sm text-mute text-center">Belum ada quest bulan ini</Text>
+            </View>
           ) : (
-            quests.map((quest) => (
-              <View
-                key={quest.quest_id}
-                className={`rounded-xl p-lg flex-row items-start gap-md ${quest.completed ? "bg-primary-pale" : "bg-canvas"
-                  }`}
-              >
-                {/* Checkbox */}
-                <View className={`w-6 h-6 rounded-md items-center justify-center flex-shrink-0 mt-xxs ${quest.completed ? "bg-positive" : "border-2 border-ink/20"
-                  }`}>
-                  {quest.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
-                </View>
-
-                <View className="flex-1">
-                  <Text className={`text-sm font-sans-semibold leading-5 ${quest.completed ? "text-positive-deep" : "text-ink"
-                    }`}>
-                    {quest.title}
-                  </Text>
-                  {quest.completed_at && (
-                    <Text className="text-xs text-positive mt-xxs">
-                      Selesai {new Date(quest.completed_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                    </Text>
-                  )}
-                </View>
-
-                {/* XP badge */}
-                <View className={`rounded-pill px-sm py-xxs flex-shrink-0 ${quest.completed ? "bg-positive/20" : "bg-primary"
-                  }`}>
-                  <Text className={`text-xs font-sans-bold ${quest.completed ? "text-positive-deep" : "text-on-primary"
-                    }`}>
-                    +{quest.xp_reward} XP
-                  </Text>
-                </View>
-              </View>
+            quests.map((quest, i) => (
+              <QuestRow key={quest.quest_id} quest={quest} isLast={i === quests.length - 1} />
             ))
           )}
         </View>

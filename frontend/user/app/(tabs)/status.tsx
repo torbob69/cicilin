@@ -10,7 +10,8 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLoansStore, Loan } from "@/store/loans";
 import { LoanTab } from "@/services/loans";
-import { Card } from "@/components/ui/Card";
+import { useAuthStore } from "@/store/auth";
+import { useLoanSheet } from "@/store/loanSheet";
 import { SkeletonCard } from "@/components/ui/Skeleton";
 
 const TABS: { key: LoanTab; label: string }[] = [
@@ -22,46 +23,45 @@ const TABS: { key: LoanTab; label: string }[] = [
   { key: "rejected", label: "Ditolak" },
 ];
 
-const STATUS_COLOR: Record<string, string> = {
-  approved: "text-positive-deep bg-primary-pale",
-  disbursed: "text-positive-deep bg-primary-pale",
-  manual_review: "text-warning-content bg-warning/20",
-  rejected: "text-negative bg-negative-bg",
-  closed: "text-mute bg-canvas",
-  pending: "text-mute bg-canvas",
-};
-
 function formatIDR(n: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  disbursed: "Aktif", approved: "Disetujui", manual_review: "Ditinjau",
+  rejected: "Ditolak", closed: "Lunas", pending: "Pending",
+};
+
+const STATUS_TEXT_COLOR: Record<string, string> = {
+  approved: "#9fe870", disbursed: "#9fe870",
+  manual_review: "#ffd11a", rejected: "#f87171",
+  closed: "#525550", pending: "#525550",
+};
+
 function LoanCard({ loan, onPress }: { loan: Loan; onPress: () => void }) {
-  const colorClass = STATUS_COLOR[loan.loan_status] ?? "text-body bg-canvas-soft";
-  const [bg, fg] = colorClass.split(" ");
+  const statusColor = STATUS_TEXT_COLOR[loan.loan_status] ?? "#525550";
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} className="mb-sm">
-      <Card variant="white">
-        <View className="flex-row justify-between items-start">
-          <View className="flex-1 gap-xxs">
-            <Text className="text-xs text-mute capitalize">
-              {loan.loan_intent.replace("HOMEIMPROVEMENT", "Home Renovation").replace("DEBTCONSOLIDATION", "Debt Consol.").toLowerCase()}
-            </Text>
-            <Text className="text-lg font-sans-semibold text-ink">{formatIDR(loan.loan_amnt)}</Text>
-            <Text className="text-xs text-body">
-              Total {formatIDR(loan.monthly_installment * loan.tenure_months)} · {loan.tenure_months} bln · {loan.loan_int_rate}% p.a.
-            </Text>
-            <Text className="text-xs text-mute">
-              {new Date(loan.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-            </Text>
-          </View>
-          <View className={`rounded-pill px-md py-xs ${fg}`}>
-            <Text className={`text-xs font-sans-semibold ${bg}`}>
-              {loan.loan_status === "disbursed" ? "Aktif" : loan.loan_status === "manual_review" ? "Ditinjau" : loan.loan_status === "rejected" ? "Ditolak" : loan.loan_status === "approved" ? "Disetujui" : loan.loan_status === "closed" ? "Lunas" : loan.loan_status}
-            </Text>
-          </View>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} className="p-lg" style={{ borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
+      <View className="flex-row items-center justify-between">
+        <View className="flex-1">
+          <Text className="text-xs text-body font-light capitalize mb-xxs">
+            {loan.loan_intent.replace("HOMEIMPROVEMENT", "Home Renovation").replace("DEBTCONSOLIDATION", "Debt Consol.").toLowerCase()}
+          </Text>
+          <Text className="text-xl font-sans-bold text-ink">{formatIDR(loan.loan_amnt)}</Text>
+          <Text className="text-xs text-body mt-xxs">
+            Total {formatIDR(loan.monthly_installment * loan.tenure_months)} · {loan.tenure_months} bln
+          </Text>
         </View>
-      </Card>
+        <View className="items-end gap-xs">
+          <Text style={{ color: statusColor }} className="text-xs font-sans-semibold">
+            {STATUS_LABEL[loan.loan_status] ?? loan.loan_status}
+          </Text>
+          <Text className="text-xs text-mute">
+            {new Date(loan.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+          </Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -70,14 +70,25 @@ export default function StatusScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { loans, fetchLoans, isLoading } = useLoansStore();
+  const { logout } = useAuthStore();
+  const { open: openLoanSheet } = useLoanSheet();
   const [activeTab, setActiveTab] = useState<LoanTab>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => { fetchLoans(activeTab); }, [activeTab]);
+  const load = async (tab: LoanTab) => {
+    try {
+      await fetchLoans(tab);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) logout();
+    }
+  };
+
+  useEffect(() => { load(activeTab); }, [activeTab]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchLoans(activeTab);
+    await load(activeTab);
     setRefreshing(false);
   };
 
@@ -85,11 +96,11 @@ export default function StatusScreen() {
     <View className="flex-1 bg-canvas-soft">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingTop: insets.top + 48, paddingBottom: 120 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9fe870" />}
       >
         {/* Header */}
-        <View className="px-lg pb-sm">
+        <View className="px-xl pb-sm">
           <Text className="text-2xl font-sans-black text-ink">Riwayat</Text>
         </View>
 
@@ -98,7 +109,7 @@ export default function StatusScreen() {
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ flexShrink: 0, flexGrow: 0 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, alignItems: "center" }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, alignItems: "center" }}
         >
           {TABS.map((item, i) => (
             <TouchableOpacity
@@ -122,21 +133,21 @@ export default function StatusScreen() {
         </ScrollView>
 
         {/* List */}
-        <View className="px-lg mt-xs">
+        <View className="px-xl mt-xs">
           {isLoading && !refreshing ? (
             <View className="gap-sm">
               <SkeletonCard /><SkeletonCard /><SkeletonCard />
             </View>
           ) : loans.length === 0 ? (
-            <Card variant="sage" className="mt-sm">
+            <View className="mt-sm rounded-xl p-xl">
               <Text className="text-sm text-mute text-center">Tidak ada pinjaman di kategori ini</Text>
-            </Card>
+            </View>
           ) : (
             loans.map((item) => (
               <LoanCard
                 key={item.id}
                 loan={item}
-                onPress={() => router.push({ pathname: "/loan-detail", params: { id: item.id } })}
+                onPress={() => openLoanSheet(item.id)}
               />
             ))
           )}

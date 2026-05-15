@@ -14,6 +14,7 @@ import { useAuthStore } from "@/store/auth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast, Toast } from "@/components/ui/Toast";
+import { parseApiError } from "@/utils/api";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -42,8 +43,7 @@ export default function LoginScreen() {
       await login(res.data.access_token);
       router.replace("/(tabs)");
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? "Login gagal. Periksa nomor HP dan password kamu.";
-      show(typeof msg === "string" ? msg : "Login failed.", "error");
+      show(parseApiError(err, "Login gagal. Periksa nomor HP dan password kamu."), "error");
     } finally {
       setLoading(false);
     }
