@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useRootNavigationState } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { authService } from "@/services/auth";
@@ -20,12 +20,22 @@ export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone, purpose } = useLocalSearchParams<{ phone: string; purpose: string }>();
-  const { setNewUser } = useAuthStore();
+  const { setNewUser, login } = useAuthStore();
   const { toast, show, hide } = useToast();
+  const navigationState = useRootNavigationState();
 
   const [code, setCode] = useState("      ");
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(60);
+
+  // Guard: if params are missing (nav state restored without params), go back to login.
+  // Wait for the root navigator to be mounted before navigating.
+  useEffect(() => {
+    if (!navigationState?.key) return;
+    if (!phone) {
+      router.replace("/(auth)/login");
+    }
+  }, [navigationState?.key]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -41,7 +51,8 @@ export default function OtpScreen() {
     }
     setLoading(true);
     try {
-      await authService.verifyOtp({ phone, code: trimmed, purpose });
+      const res = await authService.verifyOtp({ phone, code: trimmed, purpose });
+      await login(res.data.access_token);
       if (purpose === "registration") {
         setNewUser(true);
         router.replace("/(onboarding)/personal");
@@ -69,13 +80,16 @@ export default function OtpScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "android" ? "height" : "padding"}
     >
       <View
         style={{ paddingTop: insets.top + 32 }}
         className="flex-1 px-xl"
       >
-        <TouchableOpacity onPress={() => router.back()} className="mb-2xl">
+        <TouchableOpacity
+          onPress={() => purpose === "registration" ? router.replace("/(auth)/login") : router.back()}
+          className="mb-2xl"
+        >
           <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
         </TouchableOpacity>
 

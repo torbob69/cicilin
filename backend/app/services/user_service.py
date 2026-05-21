@@ -1,7 +1,7 @@
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_pin
+from app.core.security import hash_pin, verify_pin
 from app.models.bank_account import BankAccount
 from app.models.kyc_document import KYCDocument
 from app.models.user import User
@@ -61,6 +61,16 @@ def set_pin(db: Session, user: User, pin: str) -> dict:
     user.pin_hash = hash_pin(pin)
     db.commit()
     return {"message": "PIN set successfully"}
+
+
+def change_pin(db: Session, user: User, current_pin: str, new_pin: str) -> dict:
+    if not user.pin_hash:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PIN belum diatur. Gunakan fitur set-pin terlebih dahulu.")
+    if not verify_pin(current_pin, user.pin_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="PIN saat ini tidak valid")
+    user.pin_hash = hash_pin(new_pin)
+    db.commit()
+    return {"message": "PIN berhasil diubah"}
 
 
 # ── KYC ──────────────────────────────────────────────────────────────────────

@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.user import (
     BankAccountCreateRequest,
     BankAccountResponse,
+    ChangePinRequest,
     EmploymentResponse,
     EmploymentUpsertRequest,
     KYCStatusResponse,
@@ -44,6 +45,15 @@ def set_pin(
     db: Session = Depends(get_db),
 ):
     return user_service.set_pin(db, user, data.pin)
+
+
+@router.put("/me/change-pin")
+def change_pin(
+    data: ChangePinRequest,
+    user: User = Depends(get_verified_user),
+    db: Session = Depends(get_db),
+):
+    return user_service.change_pin(db, user, data.current_pin, data.new_pin)
 
 
 @router.get("/me/rank", response_model=RankResponse)

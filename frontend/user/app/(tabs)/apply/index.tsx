@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+﻿import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -74,7 +74,7 @@ export default function ApplyAmountScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "android" ? "height" : "padding"}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 120 }}

@@ -9,7 +9,7 @@ export const authService = {
   }) => api.post("/auth/register", data),
 
   verifyOtp: (data: { phone: string; code: string; purpose: string }) =>
-    api.post("/auth/verify-otp", data),
+    api.post<{ access_token: string; token_type: string }>("/auth/verify-otp", data),
 
   resendOtp: (data: { phone: string; purpose: string }) =>
     api.post("/auth/resend-otp", data),

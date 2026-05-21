@@ -1,5 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -70,17 +69,13 @@ export default function PersonalScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "android" ? "height" : "padding"}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}
         className="px-xl"
         keyboardShouldPersistTaps="handled"
       >
-        <TouchableOpacity onPress={() => router.back()} className="mb-xl">
-          <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
-        </TouchableOpacity>
-
         {/* Step indicator */}
         <View className="flex-row gap-xs mb-2xl">
           {[1, 2, 3, 4, 5].map((s) => (

@@ -1,9 +1,15 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
 import { View } from "react-native";
 import { TabBar } from "@/components/TabBar";
 import { LoanDetailSheet } from "@/components/LoanDetailSheet";
+import { useAuthStore } from "@/store/auth";
 
 export default function TabsLayout() {
+  const { isAuthenticated, isLoading } = useAuthStore();
+
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Redirect href="/(auth)/login" />;
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs

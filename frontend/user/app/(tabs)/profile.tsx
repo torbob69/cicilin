@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -106,7 +106,7 @@ function EditSheet({ visible, initial, address, onClose, onSave }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "android" ? "height" : "padding"} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
         <Pressable className="flex-1" onPress={onClose} />
         <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24, maxHeight: "90%" }}>
           <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
@@ -218,7 +218,7 @@ function PinSheet({ visible, hasPinSet, onClose, onSave }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "android" ? "height" : "padding"} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
         <Pressable className="flex-1" onPress={onClose} />
         <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24 }}>
           <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />

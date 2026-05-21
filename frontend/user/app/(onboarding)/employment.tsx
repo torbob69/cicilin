@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   View,
@@ -69,7 +69,7 @@ export default function EmploymentScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "android" ? "height" : "padding"}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}

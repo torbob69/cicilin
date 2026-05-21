@@ -2,23 +2,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "@/constants/config";
 import api from "./api";
 
-async function readAsBlob(uri: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.responseType = "blob";
-    xhr.onload = () => resolve(xhr.response as Blob);
-    xhr.onerror = () => reject(new Error("Failed to read file"));
-    xhr.open("GET", uri);
-    xhr.send();
-  });
-}
-
 async function uploadFile(endpoint: string, fileUri: string): Promise<{ data: any }> {
   const token = await AsyncStorage.getItem("access_token");
-  const blob = await readAsBlob(fileUri);
 
   const formData = new FormData();
-  formData.append("file", blob, "upload.jpg");
+  formData.append("file", {
+    uri: fileUri,
+    type: "image/jpeg",
+    name: "upload.jpg",
+  } as any);
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: "POST",

@@ -110,6 +110,18 @@ class SetPinRequest(BaseModel):
         return v
 
 
+class ChangePinRequest(BaseModel):
+    current_pin: str
+    new_pin: str
+
+    @field_validator("current_pin", "new_pin")
+    @classmethod
+    def validate_pin(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("PIN must be exactly 6 digits")
+        return v
+
+
 # ── User Profile (full) ───────────────────────────────────────────────────────
 
 class UserProfileResponse(BaseModel):
@@ -126,6 +138,7 @@ class UserProfileResponse(BaseModel):
     cb_person_cred_hist_length: int | None
     rank: str
     xp: int
+    has_pin: bool
     is_verified: bool
     created_at: datetime
 

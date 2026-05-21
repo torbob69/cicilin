@@ -73,7 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: res.data });
     } catch (err: any) {
       const status = err?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         await AsyncStorage.removeItem("access_token");
         set({ token: null, user: null, isAuthenticated: false });
       }

@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+﻿import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -63,7 +63,7 @@ function AcceptOfferModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView
         className="flex-1 justify-end"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "android" ? "height" : "padding"}
         style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
       >
         <Pressable className="flex-1" onPress={onClose} />

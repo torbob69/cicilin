@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
   View,
   Text,
@@ -51,7 +51,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-canvas-soft"
+      style={{ flex: 1, backgroundColor: "#1a1c18" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
@@ -62,24 +62,30 @@ export default function LoginScreen() {
         {/* Hero band */}
         <View
           style={{ paddingTop: insets.top + 48, paddingBottom: 40 }}
-          className="px-xl bg-canvas-soft"
+          className="px-2xl"
         >
-          <View className="mb-xs">
-            <Text className="text-5xl font-sans-black text-ink leading-none tracking-tight">
-              Cicilin.
-            </Text>
+          <View className="flex flex-col gap-16">
+            <View className="mb-xs">
+              <Text className="text-4xl font-sans-black text-white leading-none tracking-tight" style={{ fontFamily: "PixelifySans_400Regular" }}>
+                cicil.<Text className="text-primary">in</Text>
+              </Text>
+            </View>
+            <View className="flex flex-col">
+              <Text className="text-5xl text-white tracking-tight font-semibold leading-tight">
+                Pinjaman <Text className="text-primary">cepat</Text>, dengan cicilan <Text className="text-primary">ringan</Text>.
+              </Text>
+              <Text className="text-ink/70 text-xs mt-md">Dapatkan keputusan pinjaman dalam hitungan detik dengan AI scoring.</Text>
+            </View>
           </View>
-          <Text className="text-base text-body mt-sm">
-            Pinjaman cepat, skor kredit membaik.
-          </Text>
         </View>
 
-        {/* Form card */}
-        <View className="flex-1 bg-canvas rounded-t-3xl px-xl pt-2xl pb-xl">
-          <Text className="text-2xl font-sans-black text-ink mb-xs">Masuk</Text>
-          <Text className="text-sm text-mute mb-2xl">Selamat datang kembali.</Text>
+        <View style={{ flex: 1 }} />
 
-          <View className="gap-lg">
+        {/* Form card */}
+        <View className="bg-canvas rounded-t-3xl px-xl pt-2xl pb-xl">
+          <Text className="text-2xl font-sans-black text-ink mb-xl pr-1">Masuk</Text>
+
+          <View className="gap-lg flex flex-col">
             <Input
               label="Nomor HP"
               placeholder="08xx xxxx xxxx"
@@ -107,8 +113,8 @@ export default function LoginScreen() {
 
           <View className="flex-row justify-center mt-xl gap-xs">
             <Text className="text-sm text-body">Belum punya akun?</Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-              <Text className="text-sm font-sans-semibold text-ink underline">
+            <TouchableOpacity style={{ flexShrink: 0 }} onPress={() => router.push("/(auth)/register")}>
+              <Text className="text-sm font-sans-semibold text-ink underline pr-1">
                 Daftar sekarang
               </Text>
             </TouchableOpacity>

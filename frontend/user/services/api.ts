@@ -18,7 +18,7 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const s = err.response?.status;
-    if (s === 401 || s === 403) {
+    if (s === 401) {
       await AsyncStorage.removeItem("access_token");
     }
     return Promise.reject(err);

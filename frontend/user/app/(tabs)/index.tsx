@@ -129,7 +129,7 @@ export default function HomeScreen() {
       setLeaderboard((lbRes.data ?? []).slice(0, 5));
     } catch (err: any) {
       const status = err?.response?.status;
-      if (status === 401 || status === 403) {
+      if (status === 401) {
         await logout();
       }
     } finally {

@@ -18,7 +18,8 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0c0f0b"
       },
-      "package": "com.cicilin.user"
+      "package": "com.cicilin.user",
+      "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
       "expo-router",

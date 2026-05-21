@@ -31,6 +31,10 @@ class User(Base):
         DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
+    @property
+    def has_pin(self) -> bool:
+        return self.pin_hash is not None
+
     # Relationships
     otp_tokens: Mapped[list["OTPToken"]] = relationship("OTPToken", back_populates="user")
     kyc_document: Mapped["KYCDocument | None"] = relationship(

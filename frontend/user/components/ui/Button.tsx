@@ -64,7 +64,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === "primary" ? "#0e0f0c" : "#9fe870"} />
       ) : (
-        <Text className={`text-base leading-6 ${v.text}`}>{label}</Text>
+        <Text className={`text-base leading-6 px-px ${v.text}`}>{label}</Text>
       )}
     </TouchableOpacity>
   );

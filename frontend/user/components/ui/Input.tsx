@@ -25,9 +25,9 @@ export function Input({ label, error, hint, suffix, prefix, ...props }: Props) {
       )}
       <View
         className={`
-          flex-row items-center bg-canvas rounded-md px-lg
+          flex-row items-center bg-canvas rounded-full px-lg
           border
-          ${error ? "border-negative" : focused ? "border-ink" : "border-ink/30"}
+          ${error ? "border-negative" : "border-ink/30"}
         `}
       >
         {prefix && <View className="mr-sm">{prefix}</View>}
@@ -36,6 +36,7 @@ export function Input({ label, error, hint, suffix, prefix, ...props }: Props) {
           placeholderTextColor="#525550"
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
+          style={[{ outlineWidth: 0 } as any]}
           {...props}
         />
         {suffix && <View className="ml-sm">{suffix}</View>}

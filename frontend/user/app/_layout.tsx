@@ -1,6 +1,6 @@
 import "../global.css";
 import React, { useEffect } from "react";
-import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
+import { Stack } from "expo-router";
 import { useFonts, DMSans_400Regular, DMSans_500Medium, DMSans_600SemiBold, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
 import { PixelifySans_400Regular } from "@expo-google-fonts/pixelify-sans";
 import * as SplashScreen from "expo-splash-screen";
@@ -9,31 +9,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/auth";
 
 SplashScreen.preventAutoHideAsync();
-
-function AuthGate() {
-  const { isAuthenticated, isLoading, isNewUser } = useAuthStore();
-  const segments = useSegments();
-  const router = useRouter();
-  const navigationState = useRootNavigationState();
-
-  useEffect(() => {
-    if (!navigationState?.key) return;
-    if (isLoading) return;
-
-    const inAuth = segments[0] === "(auth)";
-    const inOnboarding = segments[0] === "(onboarding)";
-
-    if (!isAuthenticated && !inAuth) {
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && isNewUser && !inOnboarding) {
-      router.replace("/(onboarding)/personal");
-    } else if (isAuthenticated && !isNewUser && inAuth) {
-      router.replace("/(tabs)");
-    }
-  }, [isAuthenticated, isLoading, isNewUser, segments, navigationState?.key]);
-
-  return null;
-}
 
 export default function RootLayout() {
   const { init } = useAuthStore();
@@ -49,7 +24,6 @@ export default function RootLayout() {
     init();
   }, []);
 
-  // Hide splash when fonts finish (or fail) — prevents infinite white splash
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
@@ -59,12 +33,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0c0f0b" }}>
       <SafeAreaProvider>
-        <AuthGate />
         <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(onboarding)" />
           <Stack.Screen name="(tabs)" />
-<Stack.Screen name="profile/edit" />
+          <Stack.Screen name="profile/edit" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>
