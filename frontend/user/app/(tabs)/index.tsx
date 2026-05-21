@@ -121,7 +121,7 @@ export default function HomeScreen() {
   const load = async () => {
     try {
       const [, rankRes, lbRes] = await Promise.all([
-        fetchLoans("approved"),
+        fetchLoans("all"),
         userService.getRank(),
         userService.getLeaderboard(),
       ]);
@@ -161,7 +161,7 @@ export default function HomeScreen() {
     .filter((l) => {
       const d = new Date(l.created_at);
       return (
-        ["approved", "disbursed"].includes(l.loan_status) &&
+        l.loan_status !== "rejected" &&
         d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth()
       );
