@@ -6,6 +6,7 @@ const NAV = [
   { path: '/kyc',    label: 'KYC Review',   icon: ShieldIcon },
   { path: '/loans',  label: 'Loan Review',  icon: FileIcon },
   { path: '/users',  label: 'Users',        icon: UsersIcon },
+  { path: '/dev',    label: 'God Mode',     icon: ZapIcon },
 ]
 
 export default function Sidebar() {
@@ -31,27 +32,32 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {NAV.map(({ path, label, icon: Icon }) => (
-          <NavLink
-            key={path}
-            to={path}
-            end={path === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-green-500/8 text-green-400 border-l-2 border-green-500 pl-[10px]'
-                  : 'text-gray-500 hover:text-white hover:bg-white/5'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon size={17} className={isActive ? 'text-green-400' : 'text-gray-500'} />
-                {label}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {NAV.map(({ path, label, icon: Icon }) => {
+          const isDev = path === '/dev'
+          return (
+            <NavLink
+              key={path}
+              to={path}
+              end={path === '/'}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  isActive
+                    ? isDev
+                      ? 'bg-orange-500/10 text-orange-400 border-l-2 border-orange-500 pl-[10px]'
+                      : 'bg-green-500/8 text-green-400 border-l-2 border-green-500 pl-[10px]'
+                    : 'text-gray-500 hover:text-white hover:bg-white/5'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <Icon size={17} className={isActive ? (isDev ? 'text-orange-400' : 'text-green-400') : 'text-gray-500'} />
+                  {label}
+                </>
+              )}
+            </NavLink>
+          )
+        })}
       </nav>
 
       {/* Admin info + logout */}
@@ -104,6 +110,13 @@ function UsersIcon({ size = 20, className = '' }) {
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
       <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  )
+}
+function ZapIcon({ size = 20, className = '' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polygon points="13,2 3,14 12,14 11,22 21,10 12,10 13,2"/>
     </svg>
   )
 }

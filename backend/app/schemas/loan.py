@@ -11,8 +11,8 @@ class LoanApplyRequest(BaseModel):
     @field_validator("loan_amnt")
     @classmethod
     def validate_loan_amnt(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("Loan amount must be positive")
+        if v < 500_000:
+            raise ValueError("Minimum loan amount is Rp 500.000")
         return v
 
     @field_validator("loan_intent")

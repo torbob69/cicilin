@@ -9,6 +9,8 @@ from app.schemas.admin import (
     AdminLoanListItem,
     AdminLoginRequest,
     AdminTokenResponse,
+    DevUserDetail,
+    DevUserOverrideRequest,
     KYCReviewRequest,
     LoanReviewRequest,
     PaginatedUsers,
@@ -75,3 +77,24 @@ def list_users(
     db: Session = Depends(get_db),
 ):
     return admin_service.list_users(db, page, page_size)
+
+
+# ── Dev God Mode ──────────────────────────────────────────────────────────────
+
+@router.get("/dev/users/{user_id}", response_model=DevUserDetail)
+def dev_get_user(
+    user_id: int,
+    admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return admin_service.dev_get_user(db, user_id)
+
+
+@router.patch("/dev/users/{user_id}", response_model=DevUserDetail)
+def dev_override_user(
+    user_id: int,
+    data: DevUserOverrideRequest,
+    admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return admin_service.dev_override_user(db, user_id, data)

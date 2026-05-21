@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.admin import Admin
+from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.models.loan_application import LoanApplication
 from app.models.user import User
@@ -12,6 +13,8 @@ from app.schemas.admin import (
     AdminKYCListItem,
     AdminLoanListItem,
     AdminUserListItem,
+    DevUserDetail,
+    DevUserOverrideRequest,
     KYCReviewRequest,
     LoanReviewRequest,
     PaginatedUsers,
@@ -127,6 +130,95 @@ def list_users(db: Session, page: int, page_size: int) -> PaginatedUsers:
         page_size=page_size,
         items=[_user_to_admin(u) for u in users],
     )
+
+
+# ── Dev God Mode ──────────────────────────────────────────────────────────────
+
+VALID_RANKS = {"Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ruby"}
+
+def dev_get_user(db: Session, user_id: int) -> DevUserDetail:
+    user = (
+        db.query(User)
+        .options(joinedload(User.kyc_document), joinedload(User.credit_history))
+        .filter(User.id == user_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    kyc_status = user.kyc_document.review_status if user.kyc_document else "no_kyc"
+    ch = user.credit_history
+    return DevUserDetail(
+        id=user.id,
+        full_name=user.full_name,
+        phone=user.phone,
+        email=user.email,
+        rank=user.rank,
+        xp=user.xp,
+        is_verified=user.is_verified,
+        is_active=user.is_active,
+        kyc_status=kyc_status,
+        default_on_file=ch.default_on_file if ch else "N",
+        cred_hist_length=ch.cred_hist_length if ch else 0,
+        created_at=user.created_at,
+    )
+
+
+def dev_override_user(db: Session, user_id: int, data: DevUserOverrideRequest) -> DevUserDetail:
+    user = (
+        db.query(User)
+        .options(joinedload(User.kyc_document), joinedload(User.credit_history))
+        .filter(User.id == user_id)
+        .first()
+    )
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if data.rank is not None:
+        if data.rank not in VALID_RANKS:
+            raise HTTPException(status_code=400, detail=f"Invalid rank. Must be one of: {', '.join(sorted(VALID_RANKS))}")
+        user.rank = data.rank
+
+    if data.xp is not None:
+        user.xp = max(0, data.xp)
+
+    if data.is_verified is not None:
+        user.is_verified = data.is_verified
+
+    if data.is_active is not None:
+        user.is_active = data.is_active
+
+    if data.kyc_status is not None:
+        if data.kyc_status not in ("approved", "rejected", "pending"):
+            raise HTTPException(status_code=400, detail="kyc_status must be approved, rejected, or pending")
+        if user.kyc_document:
+            user.kyc_document.review_status = data.kyc_status
+            if data.kyc_status == "approved":
+                user.kyc_document.verified_at = datetime.now(timezone.utc)
+        else:
+            kyc = KYCDocument(user_id=user.id, review_status=data.kyc_status)
+            db.add(kyc)
+
+    if data.default_on_file is not None:
+        if data.default_on_file not in ("Y", "N"):
+            raise HTTPException(status_code=400, detail="default_on_file must be Y or N")
+        if user.credit_history:
+            user.credit_history.default_on_file = data.default_on_file
+        else:
+            ch = CreditHistory(user_id=user.id, default_on_file=data.default_on_file, cred_hist_length=0)
+            db.add(ch)
+
+    if data.cred_hist_length is not None:
+        if user.credit_history:
+            user.credit_history.cred_hist_length = max(0, data.cred_hist_length)
+            user.cb_person_cred_hist_length = max(0, data.cred_hist_length)
+        else:
+            ch = CreditHistory(user_id=user.id, default_on_file="N", cred_hist_length=max(0, data.cred_hist_length))
+            db.add(ch)
+            user.cb_person_cred_hist_length = max(0, data.cred_hist_length)
+
+    db.commit()
+    db.refresh(user)
+    return dev_get_user(db, user_id)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

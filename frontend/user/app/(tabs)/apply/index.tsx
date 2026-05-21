@@ -51,7 +51,7 @@ export default function ApplyAmountScreen() {
 
   const validate = () => {
     const e: typeof errors = {};
-    if (!numericAmount || numericAmount < 100_000) e.amount = "Minimal Rp 100.000";
+    if (!numericAmount || numericAmount < 500_000) e.amount = "Minimal Rp 500.000";
     else if (numericAmount > limit) e.amount = `Melebihi limit Rp ${limit.toLocaleString("id-ID")}`;
     if (!intent) e.intent = "Pilih tujuan pinjaman";
     setErrors(e);

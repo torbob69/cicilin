@@ -124,3 +124,30 @@ class PaginatedUsers(BaseModel):
     page: int
     page_size: int
     items: list[AdminUserListItem]
+
+
+# ── Dev God Mode ──────────────────────────────────────────────────────────────
+
+class DevUserDetail(BaseModel):
+    id: int
+    full_name: str
+    phone: str
+    email: str
+    rank: str
+    xp: int
+    is_verified: bool
+    is_active: bool
+    kyc_status: str
+    default_on_file: str   # Y / N
+    cred_hist_length: int
+    created_at: datetime
+
+
+class DevUserOverrideRequest(BaseModel):
+    xp: int | None = None
+    rank: str | None = None
+    is_verified: bool | None = None
+    is_active: bool | None = None
+    kyc_status: str | None = None          # approved / rejected / pending
+    default_on_file: str | None = None     # Y / N
+    cred_hist_length: int | None = None

@@ -37,6 +37,11 @@ export const adminAPI = {
 
   // Users
   getUsers: () => api.get('/admin/users'),
+
+  // Dev God Mode
+  devGetUser: (userId: number) => api.get(`/admin/dev/users/${userId}`),
+  devOverrideUser: (userId: number, data: Record<string, unknown>) =>
+    api.patch(`/admin/dev/users/${userId}`, data),
 }
 
 export default api

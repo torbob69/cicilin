@@ -9,15 +9,18 @@ export default function Users() {
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<number | null>(null)
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => adminAPI.getUsers().then(r => r.data),
   })
 
+  const users: any[] = (data as any)?.items ?? []
+  const total: number = (data as any)?.total ?? 0
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    if (!q) return users as any[]
-    return (users as any[]).filter((u: any) =>
+    if (!q) return users
+    return users.filter((u: any) =>
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
       u.phone?.includes(q)
@@ -33,7 +36,7 @@ export default function Users() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-white text-2xl font-black mb-1">Users</h1>
-          <p className="text-gray-500 text-sm">{(users as any[]).length} pengguna terdaftar</p>
+          <p className="text-gray-500 text-sm">{total} pengguna terdaftar</p>
         </div>
       </div>
 
