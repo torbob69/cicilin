@@ -6,9 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "backgroundColor": "#0c0f0b"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.cicilin.user"
@@ -19,11 +16,23 @@
         "backgroundColor": "#0c0f0b"
       },
       "package": "com.cicilin.user",
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0c0f0b"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -35,6 +44,12 @@
     "scheme": "cicilin",
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fe404ed1-cc56-4233-9373-026c0875535a"
+      }
     }
   }
 }
