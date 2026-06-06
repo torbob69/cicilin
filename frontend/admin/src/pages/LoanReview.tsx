@@ -5,7 +5,17 @@ import StatusBadge from '../components/StatusBadge'
 import RankBadge from '../components/RankBadge'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
-import { formatIDR, formatDate, LOAN_INTENT_MAP } from '../utils/format'
+import { formatIDR, formatDate, LOAN_INTENT_MAP, avatarColor } from '../utils/format'
+
+const GRADE_COLOR: Record<string, string> = {
+  A: 'bg-green-500/15 text-green-400 ring-1 ring-green-500/30',
+  B: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30',
+  C: 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30',
+  D: 'bg-yellow-500/15 text-yellow-400 ring-1 ring-yellow-500/30',
+  E: 'bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/30',
+  F: 'bg-red-500/15 text-red-400 ring-1 ring-red-500/30',
+  G: 'bg-red-900/30 text-red-600 ring-1 ring-red-900/40',
+}
 
 export default function LoanReview() {
   const qc = useQueryClient()
@@ -35,7 +45,7 @@ export default function LoanReview() {
     const textColor = pct >= 75 ? 'text-green-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400'
     return (
       <div className="flex items-center gap-2 min-w-[100px]">
-        <div className="flex-1 h-1.5 bg-surface2 rounded-full overflow-hidden">
+        <div className="flex-1 h-2.5 bg-surface2 rounded-full overflow-hidden">
           <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
         </div>
         <span className={`text-xs font-bold ${textColor} w-8 text-right`}>{pct}%</span>
@@ -49,8 +59,8 @@ export default function LoanReview() {
 
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-white text-2xl font-black mb-1">Loan Review</h1>
-          <p className="text-gray-500 text-sm">Pinjaman yang memerlukan review manual (confidence &lt; 75%)</p>
+          <h1 className="text-white text-2xl font-black mb-1">Verifikasi Pinjaman</h1>
+          <p className="text-gray-500 text-sm">Pinjaman yang memerlukan verifikasi manual (confidence &lt; 75%)</p>
         </div>
         <span className="bg-orange-500/10 text-orange-400 border border-orange-500/30 text-sm font-semibold px-3 py-1.5 rounded-full">
           {(loans as any[]).length} menunggu
@@ -64,7 +74,7 @@ export default function LoanReview() {
       ) : (loans as any[]).length === 0 ? (
         <div className="bg-surface border border-[#1f1f1f] rounded-xl py-16 text-center">
           <p className="text-4xl mb-3">📋</p>
-          <p className="text-gray-500 text-sm">Tidak ada pinjaman menunggu review</p>
+          <p className="text-gray-500 text-sm">Tidak ada pinjaman menunggu verifikasi</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -76,7 +86,7 @@ export default function LoanReview() {
                 onClick={() => setExpanded(expanded === loan.id ? null : loan.id)}
               >
                 {/* User info */}
-                <div className="w-8 h-8 rounded-full bg-surface2 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                <div className={`w-8 h-8 rounded-full ${avatarColor(loan.user?.full_name)} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
                   {(loan.user?.full_name ?? 'U')[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -91,7 +101,7 @@ export default function LoanReview() {
                 </div>
 
                 {/* Grade */}
-                <span className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-surface2 text-white font-black text-sm">
+                <span className={`hidden md:flex items-center justify-center w-8 h-8 rounded-full font-black text-sm ${GRADE_COLOR[loan.loan_grade] ?? 'bg-surface2 text-white'}`}>
                   {loan.loan_grade}
                 </span>
 
@@ -120,7 +130,7 @@ export default function LoanReview() {
               </div>
 
               {/* Expanded */}
-              {expanded === loan.id && (
+              <div className={`overflow-hidden transition-all duration-200 ease-in-out ${expanded === loan.id ? 'max-h-[600px]' : 'max-h-0'}`}>
                 <div className="border-t border-[#1f1f1f] px-6 py-5 bg-[#0f0f0f]">
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4 mb-6">
                     {[
@@ -179,7 +189,7 @@ export default function LoanReview() {
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

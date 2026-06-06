@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { adminAPI } from '../services/api'
 import StatusBadge from '../components/StatusBadge'
 import RankBadge from '../components/RankBadge'
-import { formatIDR, formatDate } from '../utils/format'
+import { formatIDR, formatDate, avatarColor } from '../utils/format'
 
 export default function Users() {
   const [search, setSearch] = useState('')
@@ -85,7 +85,7 @@ export default function Users() {
                 >
                   {/* Name + email */}
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-surface2 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                    <div className={`w-8 h-8 rounded-full ${avatarColor(user.full_name)} flex items-center justify-center text-white font-bold text-xs flex-shrink-0`}>
                       {(user.full_name ?? 'U')[0].toUpperCase()}
                     </div>
                     <div className="min-w-0">
@@ -102,9 +102,10 @@ export default function Users() {
                 </div>
 
                 {/* Expanded detail */}
-                {expanded === user.id && (
+                <div className={`overflow-hidden transition-all duration-200 ease-in-out ${expanded === user.id ? 'max-h-[300px]' : 'max-h-0'}`}>
                   <div className="border-t border-[#1a1a1a] px-6 py-5 bg-[#0d0d0d] grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-8 gap-y-4">
                     {[
+                      { label: 'ID Pengguna', value: `${user.id}` },
                       { label: 'NIK', value: user.nik ?? '-' },
                       { label: 'Tanggal Lahir', value: user.date_of_birth ? formatDate(user.date_of_birth) : '-' },
                       { label: 'Alamat', value: user.address ?? '-' },
@@ -118,7 +119,7 @@ export default function Users() {
                       </div>
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             ))}
           </div>

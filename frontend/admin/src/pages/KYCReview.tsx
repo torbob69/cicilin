@@ -4,7 +4,7 @@ import { adminAPI } from '../services/api'
 import StatusBadge from '../components/StatusBadge'
 import ConfirmModal from '../components/ConfirmModal'
 import { useToast } from '../components/Toast'
-import { formatDate } from '../utils/format'
+import { formatDate, avatarColor } from '../utils/format'
 
 const FILTER_TABS = ['all', 'pending', 'approved', 'rejected'] as const
 type FilterTab = typeof FILTER_TABS[number]
@@ -49,7 +49,7 @@ export default function KYCReview() {
 
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-white text-2xl font-black mb-1">KYC Review</h1>
+          <h1 className="text-white text-2xl font-black mb-1">Verifikasi KYC</h1>
           <p className="text-gray-500 text-sm">Verifikasi dokumen identitas pengguna</p>
         </div>
         <span className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 text-sm font-semibold px-3 py-1.5 rounded-full">
@@ -63,11 +63,11 @@ export default function KYCReview() {
           <button
             key={t}
             onClick={() => setFilter(t)}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all capitalize ${
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all ${
               filter === t ? 'bg-green-500 text-black' : 'bg-surface2 text-gray-500 hover:text-white'
             }`}
           >
-            {t === 'all' ? 'Semua' : t}
+            {t === 'all' ? 'Semua' : t === 'pending' ? 'Menunggu' : t === 'approved' ? 'Disetujui' : 'Ditolak'}
           </button>
         ))}
       </div>
@@ -91,7 +91,7 @@ export default function KYCReview() {
                 onClick={() => setExpanded(expanded === kyc.id ? null : kyc.id)}
               >
                 {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-surface2 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                <div className={`w-10 h-10 rounded-full ${avatarColor(kyc.user?.full_name)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
                   {(kyc.user?.full_name ?? 'U')[0].toUpperCase()}
                 </div>
 
@@ -125,7 +125,7 @@ export default function KYCReview() {
               </div>
 
               {/* Expanded */}
-              {expanded === kyc.id && (
+              <div className={`overflow-hidden transition-all duration-200 ease-in-out ${expanded === kyc.id ? 'max-h-[800px]' : 'max-h-0'}`}>
                 <div className="border-t border-[#1f1f1f] px-6 py-5 bg-[#0f0f0f]">
                   {/* Documents grid */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -174,7 +174,7 @@ export default function KYCReview() {
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>

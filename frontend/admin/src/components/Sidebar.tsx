@@ -1,17 +1,25 @@
 import { NavLink, useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAdminStore } from '../store/auth'
+import { adminAPI } from '../services/api'
+import { avatarColor } from '../utils/format'
 
 const NAV = [
-  { path: '/',       label: 'Dashboard',    icon: GridIcon },
-  { path: '/kyc',    label: 'KYC Review',   icon: ShieldIcon },
-  { path: '/loans',  label: 'Loan Review',  icon: FileIcon },
-  { path: '/users',  label: 'Users',        icon: UsersIcon },
-  { path: '/dev',    label: 'God Mode',     icon: ZapIcon },
+  { path: '/',       label: 'Dasbor',    icon: GridIcon },
+  { path: '/kyc',    label: 'Verifikasi KYC',   icon: ShieldIcon },
+  { path: '/loans',  label: 'Verifikasi Pinjaman',  icon: FileIcon },
+  { path: '/users',  label: 'Pengguna',        icon: UsersIcon },
+  { path: '/dev',    label: 'Mode Override',     icon: ZapIcon },
 ]
 
 export default function Sidebar() {
   const { admin, logout } = useAdminStore()
   const navigate = useNavigate()
+
+  const { data: kycList } = useQuery({ queryKey: ['kyc-pending'], queryFn: () => adminAPI.getPendingKYC().then(r => r.data), staleTime: 30_000 })
+  const { data: loanList } = useQuery({ queryKey: ['loans-pending'], queryFn: () => adminAPI.getPendingLoans().then(r => r.data), staleTime: 30_000 })
+  const pendingKYCCount = Array.isArray(kycList) ? kycList.filter((k: any) => k.review_status === 'pending').length : 0
+  const pendingLoanCount = Array.isArray(loanList) ? (loanList as any[]).length : 0
 
   function handleLogout() {
     logout()
@@ -34,6 +42,7 @@ export default function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {NAV.map(({ path, label, icon: Icon }) => {
           const isDev = path === '/dev'
+          const badge = path === '/kyc' ? pendingKYCCount : path === '/loans' ? pendingLoanCount : 0
           return (
             <NavLink
               key={path}
@@ -52,7 +61,14 @@ export default function Sidebar() {
               {({ isActive }) => (
                 <>
                   <Icon size={17} className={isActive ? (isDev ? 'text-orange-400' : 'text-green-400') : 'text-gray-500'} />
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {badge > 0 && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      path === '/kyc' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-orange-500/20 text-orange-400'
+                    }`}>
+                      {badge}
+                    </span>
+                  )}
                 </>
               )}
             </NavLink>
@@ -63,9 +79,14 @@ export default function Sidebar() {
       {/* Admin info + logout */}
       <div className="px-4 py-4 border-t border-[#1a1a1a]">
         {admin && (
-          <div className="mb-3 px-1">
-            <p className="text-white text-sm font-semibold truncate">{admin.full_name}</p>
-            <p className="text-gray-600 text-xs truncate">{admin.email}</p>
+          <div className="flex items-center gap-3 mb-3 px-1">
+            <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-xs ${avatarColor(admin.full_name ?? admin.email)}`}>
+              {(admin.full_name ?? admin.email ?? 'A')[0].toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="text-white text-sm font-semibold truncate">{admin.full_name ?? 'Admin'}</p>
+              <p className="text-gray-600 text-xs truncate">{admin.email}</p>
+            </div>
           </div>
         )}
         <button

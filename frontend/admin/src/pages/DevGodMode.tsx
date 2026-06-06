@@ -187,24 +187,24 @@ export default function DevGodMode() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-1">
           <span className="text-xl">⚡</span>
-          <h1 className="text-white text-2xl font-black">DEV GOD MODE</h1>
+          <h1 className="text-white text-2xl font-black">MODE OVERRITE</h1>
           <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400 bg-orange-500/10 border border-orange-500/30 px-2 py-0.5 rounded">
             Dev Only
           </span>
         </div>
-        <p className="text-gray-500 text-sm">Override data user secara langsung — gunakan hanya untuk development.</p>
+        <p className="text-gray-500 text-sm">Override data user secara langsung — gunakan hanya untuk pengembangan.</p>
       </div>
 
       {/* Search */}
       <div className="bg-surface border border-[#1f1f1f] rounded-xl p-5 mb-6">
-        <p className="text-white text-sm font-semibold mb-3">Cari User by ID</p>
+        <p className="text-white text-sm font-semibold mb-3">Cari Pengguna Berdasarkan ID</p>
         <div className="flex gap-3">
           <input
             type="number"
             value={searchId}
             onChange={(e) => setSearchId(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && loadUser()}
-            placeholder="User ID..."
+            placeholder="ID Pengguna..."
             className="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/50 transition-colors"
           />
           <button
@@ -212,7 +212,7 @@ export default function DevGodMode() {
             disabled={loading}
             className="px-5 py-2 bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black text-sm font-bold rounded-lg transition-colors"
           >
-            {loading ? 'Loading...' : 'Load'}
+            {loading ? 'Mencari...' : 'Cari'}
           </button>
         </div>
         {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
@@ -245,66 +245,66 @@ export default function DevGodMode() {
                   {' '}({RANK_XP[derivedRank]})
                 </p>
               </Field>
-              <Field label="Rank Override">
+              <Field label="Override Rank">
                 <Select
                   value={rank}
                   onChange={setRank}
                   options={RANKS.map((r) => ({ value: r, label: `${r} (${RANK_XP[r]})` }))}
                 />
-                <p className="text-xs text-gray-600 mt-1">Overrides rank independently of XP</p>
+                <p className="text-xs text-gray-600 mt-1">Overrides rank secara independen dari XP</p>
               </Field>
             </div>
 
             {/* Account state */}
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Is Verified">
+              <Field label="Status Verifikasi">
                 <div className="flex items-center gap-3 h-9">
                   <Toggle checked={isVerified} onChange={setIsVerified} label="is_verified" />
-                  <span className="text-sm text-gray-400">{isVerified ? 'Verified' : 'Not verified'}</span>
+                  <span className="text-sm text-gray-400">{isVerified ? 'Terverifikasi' : 'Tidak terverifikasi'}</span>
                 </div>
               </Field>
-              <Field label="Is Active">
+              <Field label="Status akun">
                 <div className="flex items-center gap-3 h-9">
                   <Toggle checked={isActive} onChange={setIsActive} label="is_active" />
-                  <span className="text-sm text-gray-400">{isActive ? 'Active' : 'Banned'}</span>
+                  <span className="text-sm text-gray-400">{isActive ? 'Aktif' : 'Terblokir'}</span>
                 </div>
               </Field>
             </div>
 
             {/* KYC */}
-            <Field label="KYC Status">
+            <Field label="Status KYC">
               <Select
                 value={kycStatus}
                 onChange={setKycStatus}
                 options={[
-                  { value: 'pending', label: 'Pending' },
-                  { value: 'approved', label: 'Approved' },
-                  { value: 'rejected', label: 'Rejected' },
+                  { value: 'pending', label: 'Ditinjau' },
+                  { value: 'approved', label: 'Disetujui' },
+                  { value: 'rejected', label: 'Ditolak' },
                 ]}
               />
             </Field>
 
             {/* Credit history */}
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Default on File (cb_person_default_on_file)">
+              <Field label="Gagal bayar di File">
                 <Select
                   value={defaultOnFile}
                   onChange={setDefaultOnFile}
                   options={[
-                    { value: 'N', label: 'N — No default' },
-                    { value: 'Y', label: 'Y — Has defaulted' },
+                    { value: 'N', label: 'N — Tidak gagal bayar' },
+                    { value: 'Y', label: 'Y — Gagal bayar' },
                   ]}
                 />
-                <p className="text-xs text-gray-600 mt-1">Y → auto-rejected by ML model</p>
+                <p className="text-xs text-gray-600 mt-1">Y → Ditolak otomatis oleh model ML</p>
               </Field>
-              <Field label="Credit History Length (years)">
+               <Field label="Panjang Riwayat Kredit (years)">
                 <Input type="number" value={credHistLength} onChange={setCredHistLength} min={0} max={99} />
               </Field>
             </div>
 
             {/* Monthly Limit */}
             <div className="border border-[#2a2a2a] rounded-lg p-4 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Monthly Loan Limit (Bulan Ini)</p>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Limit Pinjaman Bulanan (Bulan Ini)</p>
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="bg-[#0f0f0f] rounded-lg p-3">
                   <p className="text-xs text-gray-600 mb-1">Limit</p>
@@ -332,7 +332,7 @@ export default function DevGodMode() {
                 disabled={resetting || user.used_this_month === 0}
                 className="w-full px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 disabled:opacity-40 border border-orange-500/30 text-orange-400 text-sm font-semibold rounded-lg transition-colors"
               >
-                {resetting ? 'Mereset...' : '↺ Reset Monthly Limit'}
+                {resetting ? 'Mereset...' : '↺ Reset Pemakaian Bulanan'}
               </button>
               <p className="text-xs text-gray-600">Menolak semua pinjaman bulan ini yang belum dicairkan, sehingga limit kembali penuh.</p>
             </div>
