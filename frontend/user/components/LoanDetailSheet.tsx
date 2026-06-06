@@ -353,7 +353,7 @@ function PaymentModal({
                 Konfirmasi Pembayaran
               </Text>
               <Text style={{ color: "#525550", fontSize: 13, fontFamily: "DMSans_400Regular", marginBottom: 20 }}>
-                Pastikan detail pembayaran sudah benar sebelum melanjutkan.
+                Pastikan detail pembayaran sudah benar.
               </Text>
 
               {/* Summary */}
