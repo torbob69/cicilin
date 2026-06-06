@@ -1,0 +1,59 @@
+name: EAS Update (user app)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/user/**'
+      - '.github/workflows/eas-update.yml'
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publish OTA update
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/user
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/user/package-lock.json
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect native-only changes
+        id: detect
+        working-directory: ${{ github.workspace }}
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -qE '^frontend/user/(app\.json|package\.json|package-lock\.json|eas\.json|assets/)'; then
+            echo "native=true" >> $GITHUB_OUTPUT
+          else
+            echo "native=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Warn — native changes detected
+        if: steps.detect.outputs.native == 'true'
+        run: |
+          echo "::warning::Native-track files changed (app.json / package.json / eas.json / assets/). OTA updates only ship JS bundles, not native code or assets. Run 'eas build --platform android --profile preview' locally to pick these up on your phone."
+
+      - name: Publish OTA update to preview channel
+        run: eas update --branch preview --message "${{ github.event.head_commit.message }}" --non-interactive
