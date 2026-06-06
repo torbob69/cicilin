@@ -2,7 +2,7 @@ name: EAS Update (user app)
 
 on:
   push:
-    branches: [main]
+    branches: [torbob, main]
     paths:
       - 'frontend/user/**'
       - '.github/workflows/eas-update.yml'
