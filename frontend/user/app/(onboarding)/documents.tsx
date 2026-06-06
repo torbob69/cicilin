@@ -8,7 +8,7 @@ import {
   Image,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { userService } from "@/services/users";
@@ -27,6 +27,7 @@ const DOC_CONFIG: Record<DocKey, { label: string; hint: string; upload: (uri: st
 
 export default function DocumentsScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const insets = useSafeAreaInsets();
   const { toast, show, hide } = useToast();
 
@@ -79,17 +80,21 @@ export default function DocumentsScreen() {
           <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
         </TouchableOpacity>
 
-        <View className="flex-row gap-xs mb-2xl">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <View
-              key={s}
-              className={`h-1 flex-1 rounded-pill ${s <= 4 ? "bg-ink" : "bg-ink/20"}`}
-            />
-          ))}
-        </View>
+        {from !== "profile" && (
+          <View className="flex-row gap-xs mb-2xl">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <View
+                key={s}
+                className={`h-1 flex-1 rounded-pill ${s <= 4 ? "bg-ink" : "bg-ink/20"}`}
+              />
+            ))}
+          </View>
+        )}
 
         <Text className="text-2xl font-sans-black text-ink mb-xs">Dokumen</Text>
-        <Text className="text-sm text-body mb-2xl">Langkah 4 dari 5 — Verifikasi KYC</Text>
+        <Text className="text-sm text-body mb-2xl">
+          {from === "profile" ? "Upload ulang dokumen KYC kamu" : "Langkah 4 dari 5 — Verifikasi KYC"}
+        </Text>
 
         <View className="gap-lg">
           {(Object.keys(DOC_CONFIG) as DocKey[]).map((key) => {
@@ -143,16 +148,22 @@ export default function DocumentsScreen() {
         </View>
 
         {!allDone && (
-          <View className="bg-warning/20 rounded-xl p-lg mt-xl">
-            <Text className="text-sm text-warning-content">
+          <View className="rounded-xl p-lg mt-xl">
+            <Text className="text-sm text-body">
               Semua 4 dokumen wajib diunggah sebelum admin dapat meninjau KYC kamu.
             </Text>
           </View>
         )}
 
         <Button
-          label="Continue"
-          onPress={() => router.push("/(onboarding)/set-pin")}
+          label={from === "profile" ? "Selesai" : "Continue"}
+          onPress={() => {
+            if (from === "profile") {
+              router.back();
+            } else {
+              router.push("/(onboarding)/set-pin");
+            }
+          }}
           disabled={!allDone}
           className="mt-2xl"
         />

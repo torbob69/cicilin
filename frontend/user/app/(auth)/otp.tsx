@@ -2,6 +2,7 @@
 import {
   View,
   Text,
+  ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
@@ -52,7 +53,7 @@ export default function OtpScreen() {
     setLoading(true);
     try {
       const res = await authService.verifyOtp({ phone, code: trimmed, purpose });
-      await login(res.data.access_token);
+      await login(res.data.access_token, res.data.refresh_token);
       if (purpose === "registration") {
         setNewUser(true);
         router.replace("/(onboarding)/personal");
@@ -80,11 +81,13 @@ export default function OtpScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "android" ? "height" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View
-        style={{ paddingTop: insets.top + 32 }}
-        className="flex-1 px-xl"
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 32, paddingBottom: 48, flexGrow: 1 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity
           onPress={() => purpose === "registration" ? router.replace("/(auth)/login") : router.back()}
@@ -125,7 +128,7 @@ export default function OtpScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
 
       <Toast {...toast} onHide={hide} />
     </KeyboardAvoidingView>

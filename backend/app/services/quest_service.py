@@ -12,30 +12,30 @@ from app.schemas.quest import ActiveQuestsResponse, QuestResponse
 from app.services import xp_service
 
 QUEST_POOL: dict[int, dict] = {
-    1:  {"title": "Lunasi minimal 1 cicilan tepat waktu bulan ini",                              "xp_reward": 30},
-    2:  {"title": "Bayar cicilan lebih awal 2 hari sebelum jatuh tempo",                         "xp_reward": 50},
-    3:  {"title": "Lunasi minimal Rp 500.000 total cicilan bulan ini",                           "xp_reward": 60},
-    4:  {"title": "Lunasi minimal Rp 1.000.000 total cicilan bulan ini",                         "xp_reward": 100},
-    5:  {"title": "Lunasi minimal Rp 5.000.000 total cicilan bulan ini",                         "xp_reward": 200},
-    6:  {"title": "Lunasi semua pinjaman aktif bulan ini",                                       "xp_reward": 300},
-    7:  {"title": "Bayar semua cicilan tepat waktu bulan ini (tanpa keterlambatan)",             "xp_reward": 120},
-    8:  {"title": "Tidak ada keterlambatan lebih dari 1 hari bulan ini",                         "xp_reward": 80},
-    9:  {"title": "Lunasi pinjaman terlama yang kamu miliki bulan ini",                          "xp_reward": 150},
-    10: {"title": "Kurangi total hutang sebesar 10% bulan ini",                                  "xp_reward": 100},
-    11: {"title": "Pertahankan rank minimal Gold selama 30 hari penuh",                          "xp_reward": 80},
-    12: {"title": "Naik satu tingkat rank bulan ini",                                            "xp_reward": 200},
-    13: {"title": "Login ke aplikasi minimal 15 hari dalam sebulan",                             "xp_reward": 25},
-    14: {"title": "Buka aplikasi 5 hari berturut-turut",                                         "xp_reward": 30},
-    15: {"title": "Cek status pinjaman setiap hari selama 7 hari berturut-turut",                "xp_reward": 40},
-    16: {"title": "Tidak mengajukan pinjaman baru bulan ini",                                    "xp_reward": 50},
-    17: {"title": "Bayar cicilan pada hari pertama jatuh tempo atau lebih awal, 2x bulan ini",  "xp_reward": 70},
-    18: {"title": "Total cicilan yang dibayar bulan ini melebihi 50% dari limit rank-mu",        "xp_reward": 90},
-    19: {"title": "Tidak ada pinjaman dengan status Unpaid bulan ini",                           "xp_reward": 110},
-    20: {"title": "Bayar cicilan untuk semua pinjaman aktif setidaknya 1 kali bulan ini",        "xp_reward": 60},
+    1:  {"title": "Lunasi minimal 1 cicilan tepat waktu bulan ini",                             "xp_reward": 30},
+    2:  {"title": "Bayar cicilan lebih awal 2 hari sebelum jatuh tempo",                        "xp_reward": 50},
+    3:  {"title": "Lunasi semua pinjaman aktif bulan ini",                                      "xp_reward": 300},
+    4:  {"title": "Bayar semua cicilan tepat waktu bulan ini (tanpa keterlambatan)",            "xp_reward": 120},
+    5:  {"title": "Tidak ada keterlambatan lebih dari 1 hari bulan ini",                        "xp_reward": 80},
+    6:  {"title": "Lunasi pinjaman terlama yang kamu miliki bulan ini",                         "xp_reward": 150},
+    7:  {"title": "Pertahankan rank minimal Gold selama 30 hari penuh",                         "xp_reward": 80},
+    8:  {"title": "Naik satu tingkat rank bulan ini",                                           "xp_reward": 200},
+    9:  {"title": "Login ke aplikasi minimal 15 hari dalam sebulan",                            "xp_reward": 25},
+    10: {"title": "Buka aplikasi 5 hari berturut-turut",                                       "xp_reward": 30},
+    11: {"title": "Cek status pinjaman setiap hari selama 7 hari berturut-turut",              "xp_reward": 40},
+    12: {"title": "Tidak mengajukan pinjaman baru bulan ini",                                   "xp_reward": 50},
+    13: {"title": "Bayar cicilan pada hari pertama jatuh tempo atau lebih awal, 2x bulan ini", "xp_reward": 70},
+    14: {"title": "Tidak ada pinjaman dengan status Unpaid bulan ini",                          "xp_reward": 110},
+    15: {"title": "Bayar cicilan untuk semua pinjaman aktif setidaknya 1 kali bulan ini",      "xp_reward": 60},
+    16: {"title": "Cek status pinjaman 3 hari berturut-turut",                                  "xp_reward": 30},
+    17: {"title": "Update profil lengkap bulan ini",                                            "xp_reward": 25},
+    18: {"title": "Tidak ada pembayaran terlambat selama 60 hari berturut-turut",               "xp_reward": 80},
+    19: {"title": "Bayar cicilan 2 bulan berturut-turut tanpa terlambat",                       "xp_reward": 50},
+    20: {"title": "Buka aplikasi 10 hari dalam sebulan",                                       "xp_reward": 20},
 }
 
 # Quests that can be evaluated automatically from repayment data
-AUTO_EVAL_QUEST_IDS: frozenset[int] = frozenset({1, 3, 4, 5, 20})
+AUTO_EVAL_QUEST_IDS: frozenset[int] = frozenset({1, 3, 15})
 
 
 def ensure_monthly_quests(db: Session) -> MonthlyQuest:
@@ -136,18 +136,28 @@ def evaluate_quests_for_user(db: Session, user: User) -> None:
 def _check_quest_condition(
     qid: int, paid_reps: list, db: Session, user: User
 ) -> bool:
+    # Quest 1: at least 1 repayment paid on or before due date this month
     if qid == 1:
         return any(
             r.paid_at is not None and r.paid_at.date() <= r.due_date
             for r in paid_reps
         )
+    # Quest 3: all active loans fully repaid this month
     if qid == 3:
-        return sum(float(r.amount) for r in paid_reps) >= 500_000
-    if qid == 4:
-        return sum(float(r.amount) for r in paid_reps) >= 1_000_000
-    if qid == 5:
-        return sum(float(r.amount) for r in paid_reps) >= 5_000_000
-    if qid == 20:
+        active_loans = (
+            db.query(LoanApplication)
+            .filter(
+                LoanApplication.user_id == user.id,
+                LoanApplication.loan_status.in_(["disbursed", "closed"]),
+            )
+            .all()
+        )
+        if not active_loans:
+            return False
+        paid_loan_ids = {r.loan_id for r in paid_reps}
+        return all(loan.id in paid_loan_ids for loan in active_loans)
+    # Quest 15: every active loan has at least one payment this month
+    if qid == 15:
         active_loans = (
             db.query(LoanApplication)
             .filter(

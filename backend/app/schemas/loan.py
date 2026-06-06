@@ -2,6 +2,12 @@ from datetime import date, datetime
 from pydantic import BaseModel, field_validator, ConfigDict
 
 
+class ShapFeature(BaseModel):
+    feature: str
+    label: str
+    shap_value: float
+
+
 class LoanApplyRequest(BaseModel):
     loan_amnt: float
     loan_intent: str
@@ -63,12 +69,21 @@ class LoanApplicationResponse(BaseModel):
     monthly_installment: float | None
     ml_score: int | None
     confidence: float | None
+    shap_explanation: list[ShapFeature] | None = None
     loan_status: str
     review_status: str
     review_note: str | None
     reviewed_at: datetime | None
     disbursed_at: datetime | None
     created_at: datetime
+
+    @field_validator("shap_explanation", mode="before")
+    @classmethod
+    def parse_shap_json(cls, v):
+        if isinstance(v, str):
+            import json
+            return json.loads(v)
+        return v
 
 
 class LoanDetailResponse(LoanApplicationResponse):

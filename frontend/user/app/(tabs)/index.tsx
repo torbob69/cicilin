@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/auth";
@@ -137,7 +137,14 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  // Re-fetch every time the home tab gains focus (e.g. after paying an
+  // installment and being navigated back via router.replace).
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+      load();
+    }, [])
+  );
 
   useEffect(() => {
     const disbursed = loans.filter((l) => l.loan_status === "disbursed").map((l) => l.id);
@@ -157,11 +164,14 @@ export default function HomeScreen() {
 
   const fullLimit = RANK_LIMIT[rank] ?? 0;
   const now = new Date();
+  // Must match backend loan_service.py monthly-limit rule:
+  // only approved/disbursed/closed loans consume the monthly limit.
+  // pending / manual_review / rejected do not.
   const usedLimit = loans
     .filter((l) => {
       const d = new Date(l.created_at);
       return (
-        l.loan_status !== "rejected" &&
+        ["approved", "disbursed", "closed"].includes(l.loan_status) &&
         d.getFullYear() === now.getFullYear() &&
         d.getMonth() === now.getMonth()
       );
@@ -238,7 +248,7 @@ export default function HomeScreen() {
         {/* ─── Quick Actions ─── */}
         <View className="px-xl mt-2xl flex-row gap-sm">
           <QuickAction icon="ribbon-outline" label="Quest" onPress={() => router.push("/(tabs)/quests")} />
-          <QuickAction icon="trophy-outline" label="Rank" onPress={() => router.push("/(tabs)/leaderboard")} />
+          <QuickAction icon="shield-checkmark-outline" label="OJK" onPress={() => router.push("/(tabs)/ojk-info")} />
           <QuickAction icon="time-outline" label="Riwayat" onPress={() => router.push("/(tabs)/status")} />
 
         </View>

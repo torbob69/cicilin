@@ -42,6 +42,8 @@ export const adminAPI = {
   devGetUser: (userId: number) => api.get(`/admin/dev/users/${userId}`),
   devOverrideUser: (userId: number, data: Record<string, unknown>) =>
     api.patch(`/admin/dev/users/${userId}`, data),
+  devResetMonthlyLimit: (userId: number) =>
+    api.post(`/admin/dev/users/${userId}/reset-monthly-limit`),
 }
 
 export default api

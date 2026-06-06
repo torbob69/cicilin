@@ -7,5 +7,5 @@ export default function AuthLayout() {
   if (isLoading) return null;
   if (isAuthenticated && !isNewUser) return <Redirect href="/(tabs)" />;
 
-  return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }} />;
+  return <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 220 }} />;
 }

@@ -58,6 +58,30 @@ class ResendOTPRequest(BaseModel):
     phone: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    phone: str
+
+
+class ResetPasswordRequest(BaseModel):
+    phone: str
+    otp_code: str
+    new_password: str
+
+    @field_validator("otp_code")
+    @classmethod
+    def validate_otp_code(cls, v: str) -> str:
+        if not v.isdigit() or len(v) != 6:
+            raise ValueError("OTP code must be 6 digits")
+        return v
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

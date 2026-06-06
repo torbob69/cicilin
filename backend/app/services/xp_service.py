@@ -1,23 +1,12 @@
 from sqlalchemy.orm import Session
 
+from app.core.constants import XP_THRESHOLDS
 from app.models.user import User
 from app.models.xp_event import XPEvent
 
-# XP threshold boundaries — descending order for first-match lookup
-_XP_THRESHOLDS: list[tuple[int, str]] = [
-    (2000, "Ruby"),
-    (1500, "Diamond"),
-    (1000, "Platinum"),
-    (600,  "Gold"),
-    (300,  "Silver"),
-    (100,  "Bronze"),
-    (0,    "Iron"),
-]
-
 
 def recalculate_rank(user: User) -> None:
-    """Update user.rank based on current XP. Does not flush/commit."""
-    for threshold, rank in _XP_THRESHOLDS:
+    for threshold, rank in XP_THRESHOLDS:
         if user.xp >= threshold:
             user.rank = rank
             return

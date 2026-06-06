@@ -21,6 +21,9 @@ interface DevUser {
   default_on_file: string
   cred_hist_length: number
   created_at: string
+  monthly_limit: number
+  used_this_month: number
+  remaining_this_month: number
 }
 
 const RANK_COLOR: Record<string, string> = {
@@ -92,6 +95,7 @@ export default function DevGodMode() {
   const [user, setUser] = useState<DevUser | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -152,6 +156,24 @@ export default function DevGodMode() {
       setError(err?.response?.data?.detail ?? 'Gagal menyimpan perubahan')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleResetMonthlyLimit = async () => {
+    if (!user) return
+    if (!confirm(`Reset monthly limit untuk ${user.full_name}? Semua pinjaman bulan ini yang belum dicairkan akan ditandai sebagai ditolak.`)) return
+    setResetting(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await adminAPI.devResetMonthlyLimit(user.id)
+      const u = res.data as DevUser
+      setUser(u)
+      setSuccess(`Monthly limit ${u.full_name} berhasil direset. Sisa limit: Rp ${u.remaining_this_month.toLocaleString('id-ID')}`)
+    } catch (err: any) {
+      setError(err?.response?.data?.detail ?? 'Gagal reset monthly limit')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -278,6 +300,41 @@ export default function DevGodMode() {
               <Field label="Credit History Length (years)">
                 <Input type="number" value={credHistLength} onChange={setCredHistLength} min={0} max={99} />
               </Field>
+            </div>
+
+            {/* Monthly Limit */}
+            <div className="border border-[#2a2a2a] rounded-lg p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">Monthly Loan Limit (Bulan Ini)</p>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-[#0f0f0f] rounded-lg p-3">
+                  <p className="text-xs text-gray-600 mb-1">Limit</p>
+                  <p className="text-white text-sm font-bold">Rp {user.monthly_limit.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="bg-[#0f0f0f] rounded-lg p-3">
+                  <p className="text-xs text-gray-600 mb-1">Terpakai</p>
+                  <p className="text-orange-400 text-sm font-bold">Rp {user.used_this_month.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="bg-[#0f0f0f] rounded-lg p-3">
+                  <p className="text-xs text-gray-600 mb-1">Sisa</p>
+                  <p className="text-green-400 text-sm font-bold">Rp {user.remaining_this_month.toLocaleString('id-ID')}</p>
+                </div>
+              </div>
+              {user.monthly_limit > 0 && (
+                <div className="w-full bg-[#1f1f1f] rounded-full h-1.5">
+                  <div
+                    className="bg-orange-400 h-1.5 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (user.used_this_month / user.monthly_limit) * 100)}%` }}
+                  />
+                </div>
+              )}
+              <button
+                onClick={handleResetMonthlyLimit}
+                disabled={resetting || user.used_this_month === 0}
+                className="w-full px-4 py-2 bg-orange-500/10 hover:bg-orange-500/20 disabled:opacity-40 border border-orange-500/30 text-orange-400 text-sm font-semibold rounded-lg transition-colors"
+              >
+                {resetting ? 'Mereset...' : '↺ Reset Monthly Limit'}
+              </button>
+              <p className="text-xs text-gray-600">Menolak semua pinjaman bulan ini yang belum dicairkan, sehingga limit kembali penuh.</p>
             </div>
 
             {/* Divider */}

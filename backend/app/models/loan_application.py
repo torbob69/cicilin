@@ -24,6 +24,7 @@ class LoanApplication(Base):
     # ML output
     ml_score: Mapped[int | None] = mapped_column(Integer, nullable=True)       # 0 or 1
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    shap_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Status
     # pending / scoring / approved / rejected / manual_review / disbursed / closed

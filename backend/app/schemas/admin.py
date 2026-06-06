@@ -141,6 +141,9 @@ class DevUserDetail(BaseModel):
     default_on_file: str   # Y / N
     cred_hist_length: int
     created_at: datetime
+    monthly_limit: int
+    used_this_month: float
+    remaining_this_month: float
 
 
 class DevUserOverrideRequest(BaseModel):

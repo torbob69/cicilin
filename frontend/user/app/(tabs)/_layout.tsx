@@ -21,7 +21,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="apply" options={{ href: null }} />
         <Tabs.Screen name="quests" />
         <Tabs.Screen name="profile" />
-        <Tabs.Screen name="leaderboard" options={{ href: null }} />
       </Tabs>
       <LoanDetailSheet />
     </View>

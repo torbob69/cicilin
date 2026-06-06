@@ -57,7 +57,7 @@ export default function BankAccountScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "android" ? "height" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}
@@ -105,8 +105,8 @@ export default function BankAccountScreen() {
           />
         </View>
 
-        <View className="bg-primary-pale rounded-xl p-lg mt-xl">
-          <Text className="text-sm text-positive-deep">
+        <View className="p-lg mt-xl">
+          <Text className="text-sm text-body">
             Rekening bank kamu akan digunakan untuk menerima dana pinjaman yang disetujui.
             Pastikan nama sesuai dengan KTP.
           </Text>

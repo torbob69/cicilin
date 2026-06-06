@@ -30,7 +30,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   isNewUser: boolean;
-  login: (token: string) => Promise<void>;
+  login: (token: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   setNewUser: (v: boolean) => void;
@@ -49,6 +49,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const token = await AsyncStorage.getItem("access_token");
       if (token) {
         set({ token, isAuthenticated: true });
+        // fetchProfile will trigger a token refresh via the axios interceptor
+        // if the stored access token has already expired. If the refresh also
+        // fails (truly expired session), the interceptor calls logout() itself.
         await get().fetchProfile();
       }
     } finally {
@@ -56,14 +59,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  login: async (token: string) => {
+  login: async (token: string, refreshToken?: string) => {
     await AsyncStorage.setItem("access_token", token);
+    if (refreshToken) {
+      await AsyncStorage.setItem("refresh_token", refreshToken);
+    }
     set({ token, isAuthenticated: true });
     await get().fetchProfile();
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem("access_token");
+    await AsyncStorage.multiRemove(["access_token", "refresh_token"]);
     set({ token: null, user: null, isAuthenticated: false });
   },
 
@@ -72,11 +78,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const res = await userService.getMe();
       set({ user: res.data });
     } catch (err: any) {
-      const status = err?.response?.status;
-      if (status === 401) {
-        await AsyncStorage.removeItem("access_token");
-        set({ token: null, user: null, isAuthenticated: false });
-      }
+      // Do NOT hard-logout here on 401. The axios interceptor in api.ts will
+      // attempt a token refresh and retry the request automatically. If the
+      // refresh also fails, the interceptor calls logout() on our behalf.
+      // Handling 401 here would race against that recovery path and cause an
+      // unnecessary logout even when the refresh would have succeeded.
+      console.warn("[fetchProfile] error:", err?.response?.status ?? err?.message);
     }
   },
 

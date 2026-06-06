@@ -5,17 +5,13 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import distinct
 from sqlalchemy.orm import Session
 
+from app.core.constants import DAILY_DRAIN
 from app.core.database import SessionLocal
 from app.models.credit_history import CreditHistory
 from app.models.loan_application import LoanApplication
 from app.models.repayment import Repayment
 from app.models.user import User
-from app.services import leaderboard_service, quest_service, xp_service
-
-_DRAIN_PER_RANK: dict[str, int] = {
-    "Ruby": 3, "Diamond": 3, "Platinum": 2, "Gold": 2,
-    "Silver": 1, "Bronze": 1, "Iron": 0,
-}
+from app.services import quest_service, xp_service
 
 _scheduler: BackgroundScheduler | None = None
 
@@ -102,8 +98,6 @@ def run_overdue_detect() -> None:
         db.commit()
 
         total = len(newly_overdue) + len(tier2) + len(tier3)
-        if total:
-            leaderboard_service.invalidate_cache()
         print(
             f"[overdue_detect] tier1={len(newly_overdue)}, "
             f"tier2={len(tier2)}, tier3={len(tier3)}"
@@ -133,13 +127,12 @@ def run_daily_drain() -> None:
         users = db.query(User).filter(User.id.in_(user_ids)).all()
         drained = 0
         for user in users:
-            drain = _DRAIN_PER_RANK.get(user.rank, 0)
+            drain = abs(DAILY_DRAIN.get(user.rank, 0))
             if drain > 0:
                 xp_service.add_xp(db, user, -drain, "daily_drain")
                 drained += 1
         if drained:
             db.commit()
-            leaderboard_service.invalidate_cache()
         print(f"[daily_drain] Applied XP drain to {drained} users.")
     except Exception as e:
         db.rollback()

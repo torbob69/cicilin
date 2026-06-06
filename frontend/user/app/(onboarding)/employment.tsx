@@ -69,7 +69,7 @@ export default function EmploymentScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "android" ? "height" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48 }}

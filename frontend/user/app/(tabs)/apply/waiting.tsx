@@ -44,6 +44,7 @@ export default function WaitingScreen() {
             status: loan.loan_status,
             confidence: String(loan.confidence ?? ""),
             loanId: String(loan.id),
+            shap: JSON.stringify(loan.shap_explanation ?? []),
           },
         });
       } catch (err: any) {

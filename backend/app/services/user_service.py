@@ -19,18 +19,8 @@ from app.schemas.user import (
     RankResponse,
     UserProfileResponse,
 )
+from app.core.constants import RANK_CONFIG as _RANK_CONFIG
 from app.services.cloudinary_service import upload_image
-
-# Grade, limits and rates indexed by rank name
-_RANK_CONFIG: dict[str, dict] = {
-    "Ruby":     {"grade": "A", "monthly_limit": 100_000_000, "interest_rate": 6.0,  "xp_next": None},
-    "Diamond":  {"grade": "B", "monthly_limit": 50_000_000,  "interest_rate": 9.0,  "xp_next": 2000},
-    "Platinum": {"grade": "C", "monthly_limit": 25_000_000,  "interest_rate": 12.0, "xp_next": 1500},
-    "Gold":     {"grade": "D", "monthly_limit": 10_000_000,  "interest_rate": 15.0, "xp_next": 1000},
-    "Silver":   {"grade": "E", "monthly_limit": 5_000_000,   "interest_rate": 18.0, "xp_next": 600},
-    "Bronze":   {"grade": "F", "monthly_limit": 2_000_000,   "interest_rate": 24.0, "xp_next": 300},
-    "Iron":     {"grade": "G", "monthly_limit": 0,           "interest_rate": 0.0,  "xp_next": 100},
-}
 
 _KYC_FIELD_MAP = {
     "ktp":         "ktp_image_url",

@@ -1,14 +1,16 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.constants import RANK_CONFIG as _RANK_CONFIG
 from app.models.admin import Admin
 from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.models.loan_application import LoanApplication
 from app.models.user import User
+from app.services import leaderboard_service
 from app.schemas.admin import (
     AdminKYCListItem,
     AdminLoanListItem,
@@ -136,6 +138,27 @@ def list_users(db: Session, page: int, page_size: int) -> PaginatedUsers:
 
 VALID_RANKS = {"Iron", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Ruby"}
 
+def _monthly_usage(db: Session, user_id: int) -> tuple[float, int]:
+    """Returns (used_this_month, monthly_limit) for the given user."""
+    user = db.query(User).filter(User.id == user_id).first()
+    rank_cfg = _RANK_CONFIG.get(user.rank if user else "Gold", _RANK_CONFIG["Gold"])
+    monthly_limit = rank_cfg["monthly_limit"] if rank_cfg else 0
+
+    month_start = date.today().replace(day=1)
+    rows = (
+        db.query(LoanApplication)
+        .filter(
+            LoanApplication.user_id == user_id,
+            LoanApplication.created_at >= datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc),
+            LoanApplication.loan_status.notin_(["rejected", "manual_review"]),
+        )
+        .with_entities(LoanApplication.loan_amnt)
+        .all()
+    )
+    used = sum(float(r.loan_amnt) for r in rows)
+    return used, monthly_limit
+
+
 def dev_get_user(db: Session, user_id: int) -> DevUserDetail:
     user = (
         db.query(User)
@@ -147,6 +170,7 @@ def dev_get_user(db: Session, user_id: int) -> DevUserDetail:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     kyc_status = user.kyc_document.review_status if user.kyc_document else "no_kyc"
     ch = user.credit_history
+    used, monthly_limit = _monthly_usage(db, user_id)
     return DevUserDetail(
         id=user.id,
         full_name=user.full_name,
@@ -160,6 +184,9 @@ def dev_get_user(db: Session, user_id: int) -> DevUserDetail:
         default_on_file=ch.default_on_file if ch else "N",
         cred_hist_length=ch.cred_hist_length if ch else 0,
         created_at=user.created_at,
+        monthly_limit=monthly_limit,
+        used_this_month=used,
+        remaining_this_month=max(0.0, monthly_limit - used),
     )
 
 
@@ -218,6 +245,24 @@ def dev_override_user(db: Session, user_id: int, data: DevUserOverrideRequest) -
 
     db.commit()
     db.refresh(user)
+    leaderboard_service.invalidate_cache()
+    return dev_get_user(db, user_id)
+
+
+def dev_reset_monthly_limit(db: Session, user_id: int) -> DevUserDetail:
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    month_start = date.today().replace(day=1)
+    # Reject every non-rejected loan this month so the limit counter resets to 0
+    db.query(LoanApplication).filter(
+        LoanApplication.user_id == user_id,
+        LoanApplication.created_at >= datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc),
+        LoanApplication.loan_status != "rejected",
+    ).update({"loan_status": "rejected", "review_status": "not_required"}, synchronize_session=False)
+
+    db.commit()
     return dev_get_user(db, user_id)
 
 

@@ -23,6 +23,7 @@ from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.schemas.user import RegisterRequest, TokenResponse
 from app.schemas.admin import AdminTokenResponse
+from app.services import leaderboard_service
 
 
 # ── OTP ───────────────────────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ def verify_otp(db: Session, phone: str, code: str, purpose: str) -> TokenRespons
 
     if purpose == "registration":
         user.is_verified = True
+        leaderboard_service.invalidate_cache()
 
     db.commit()
 
@@ -268,6 +270,28 @@ def refresh_access_token(db: Session, refresh_token: str) -> TokenResponse:
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
     )
+
+
+# ── Forgot / Reset Password ───────────────────────────────────────────────────
+
+def forgot_password(db: Session, phone: str) -> dict:
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Phone number not registered")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    generate_and_send_otp(db, user, purpose="password_reset")
+    return {"message": "OTP sent to your WhatsApp. Valid for 5 minutes."}
+
+
+def reset_password(db: Session, phone: str, code: str, new_password: str) -> dict:
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    verify_otp_inline(db, user, code, purpose="password_reset")
+    user.password_hash = hash_password(new_password)
+    db.commit()
+    return {"message": "Password reset successfully. You can now login with your new password."}
 
 
 # ── Admin Login ───────────────────────────────────────────────────────────────

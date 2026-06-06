@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timezone
 from dateutil.relativedelta import relativedelta
 
@@ -19,18 +20,9 @@ from app.schemas.loan import (
     LoanDetailResponse,
     RepaymentResponse,
 )
+from app.core.constants import RANK_CONFIG as _RANK_CONFIG
 from app.services.ml_service import MLService
 from sqlalchemy.orm import joinedload
-
-_RANK_CONFIG: dict[str, dict] = {
-    "Ruby":     {"grade": "A", "monthly_limit": 100_000_000, "interest_rate": 6.0},
-    "Diamond":  {"grade": "B", "monthly_limit": 50_000_000,  "interest_rate": 9.0},
-    "Platinum": {"grade": "C", "monthly_limit": 25_000_000,  "interest_rate": 12.0},
-    "Gold":     {"grade": "D", "monthly_limit": 10_000_000,  "interest_rate": 15.0},
-    "Silver":   {"grade": "E", "monthly_limit": 5_000_000,   "interest_rate": 18.0},
-    "Bronze":   {"grade": "F", "monthly_limit": 2_000_000,   "interest_rate": 24.0},
-    "Iron":     {"grade": "G", "monthly_limit": 0,           "interest_rate": 0.0},
-}
 
 # Loan tab → SQL filter values
 _TAB_STATUS_MAP: dict[str, list[str]] = {
@@ -46,11 +38,9 @@ _TAB_STATUS_MAP: dict[str, list[str]] = {
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _calc_monthly_installment(principal: float, annual_rate_pct: float, n_months: int) -> float:
-    if annual_rate_pct == 0:
-        return round(principal / n_months, 2)
-    r = annual_rate_pct / 100 / 12
-    pmt = principal * r * (1 + r) ** n_months / ((1 + r) ** n_months - 1)
-    return round(pmt, 2)
+    annual_rate_decimal = annual_rate_pct / 100
+    total_interest = annual_rate_decimal * (n_months / 12) * principal
+    return round((principal + total_interest) / n_months, 2)
 
 
 def _age_from_dob(dob: date) -> int:
@@ -127,7 +117,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         .filter(
             LoanApplication.user_id == user.id,
             LoanApplication.created_at >= datetime(month_start.year, month_start.month, 1, tzinfo=timezone.utc),
-            LoanApplication.loan_status.notin_(["rejected"]),
+            LoanApplication.loan_status.in_(["approved", "disbursed", "closed"]),
         )
         .with_entities(LoanApplication.loan_amnt)
         .all()
@@ -184,9 +174,10 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         loan_intent=data.loan_intent,
     )
 
-    ml_score   = ml_result["loan_status"]
-    confidence = ml_result["confidence"]
-    threshold  = settings.ML_CONFIDENCE_THRESHOLD
+    ml_score        = ml_result["loan_status"]
+    confidence      = ml_result["confidence"]
+    shap_explanation = ml_result.get("shap_explanation")
+    threshold       = settings.ML_CONFIDENCE_THRESHOLD
 
     if confidence >= threshold:
         loan_status   = "approved" if ml_score == 1 else "rejected"
@@ -207,6 +198,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
         monthly_installment=monthly_installment,
         ml_score=ml_score,
         confidence=confidence,
+        shap_explanation=json.dumps(shap_explanation) if shap_explanation else None,
         loan_status=loan_status,
         review_status=review_status,
     )
@@ -297,16 +289,17 @@ def accept_offer(db: Session, user: User, loan_id: int, data: AcceptOfferRequest
     loan.loan_status  = "disbursed"
     loan.disbursed_at = now
 
-    # Single lump-sum repayment due at end of tenor
-    total_repayment = round(float(loan.monthly_installment) * loan.tenure_months, 2)
-    due_date = now.date() + relativedelta(months=loan.tenure_months)
-    db.add(Repayment(
-        loan_id=loan.id,
-        installment_number=1,
-        due_date=due_date,
-        amount=total_repayment,
-        status="pending",
-    ))
+    # One repayment row per month (cicilan bulanan)
+    monthly_amount = float(loan.monthly_installment)
+    for i in range(1, loan.tenure_months + 1):
+        due_date = now.date() + relativedelta(months=i)
+        db.add(Repayment(
+            loan_id=loan.id,
+            installment_number=i,
+            due_date=due_date,
+            amount=monthly_amount,
+            status="pending",
+        ))
 
     db.commit()
     loan = (

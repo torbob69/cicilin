@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -46,9 +47,14 @@ export default function PinScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "android" ? "height" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={{ paddingTop: insets.top + 24 }} className="flex-1 px-xl">
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48, flexGrow: 1 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity onPress={() => router.back()} className="mb-xl">
           <Ionicons name="chevron-back" size={24} color="#e8ebe6" />
         </TouchableOpacity>
@@ -64,7 +70,7 @@ export default function PinScreen() {
         <OtpInput value={pin} onChange={setPin} length={6} secureTextEntry />
 
         <Button label="Ajukan Pinjaman" loading={loading} onPress={handleSubmit} className="mt-2xl" />
-      </View>
+      </ScrollView>
 
       <Toast {...toast} onHide={hide} />
     </KeyboardAvoidingView>

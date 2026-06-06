@@ -1,33 +1,58 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as FileSystem from "expo-file-system";
+import { Platform } from "react-native";
 import { API_BASE_URL } from "@/constants/config";
 import api from "./api";
 
 async function uploadFile(endpoint: string, fileUri: string): Promise<{ data: any }> {
   const token = await AsyncStorage.getItem("access_token");
+  const authHeader: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const formData = new FormData();
-  formData.append("file", {
-    uri: fileUri,
-    type: "image/jpeg",
-    name: "upload.jpg",
-  } as any);
+  if (Platform.OS === "web") {
+    // On web, ImagePicker gives a blob: URL — fetch it to get an actual Blob
+    const blobRes = await fetch(fileUri);
+    const blob = await blobRes.blob();
+    const formData = new FormData();
+    formData.append("file", blob, "upload.jpg");
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "POST",
+      headers: authHeader,
+      body: formData,
+    });
 
-  let json: any = {};
-  try {
-    json = await response.json();
-  } catch {
-    json = { detail: `Server error (${response.status})` };
+    let json: any = {};
+    try { json = await response.json(); }
+    catch { json = { detail: `Server error (${response.status})` }; }
+
+    if (!response.ok) {
+      const err: any = new Error("Upload failed");
+      err.response = { data: json, status: response.status };
+      throw err;
+    }
+    return { data: json };
   }
 
-  if (!response.ok) {
+  // Native: FileSystem.uploadAsync handles multipart properly
+  const result = await FileSystem.uploadAsync(
+    `${API_BASE_URL}${endpoint}`,
+    fileUri,
+    {
+      httpMethod: "POST",
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: "file",
+      mimeType: "image/jpeg",
+      headers: authHeader,
+    }
+  );
+
+  let json: any = {};
+  try { json = JSON.parse(result.body); }
+  catch { json = { detail: `Server error (${result.status})` }; }
+
+  if (result.status >= 400) {
     const err: any = new Error("Upload failed");
-    err.response = { data: json, status: response.status };
+    err.response = { data: json, status: result.status };
     throw err;
   }
   return { data: json };

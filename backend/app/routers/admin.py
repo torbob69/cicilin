@@ -98,3 +98,12 @@ def dev_override_user(
     db: Session = Depends(get_db),
 ):
     return admin_service.dev_override_user(db, user_id, data)
+
+
+@router.post("/dev/users/{user_id}/reset-monthly-limit", response_model=DevUserDetail)
+def dev_reset_monthly_limit(
+    user_id: int,
+    admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    return admin_service.dev_reset_monthly_limit(db, user_id)

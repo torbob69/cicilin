@@ -7,7 +7,7 @@ from app.models.loan_application import LoanApplication
 from app.models.repayment import Repayment
 from app.models.user import User
 from app.schemas.loan import PaymentResponse, RepaymentResponse
-from app.services import xp_service
+from app.services import xp_service, leaderboard_service
 
 _PAYABLE_STATUSES = {"pending", "overdue"}
 
@@ -53,10 +53,10 @@ def pay_installment(
     # ── 4. XP for this installment ────────────────────────────────────────────
     today = now.date()
     if today < repayment.due_date:
-        xp_delta = 35
+        xp_delta = 10
         reason   = "pay_early"
     else:
-        xp_delta = 20
+        xp_delta = 5
         reason   = "pay_on_time"
 
     xp_service.add_xp(db, user, xp_delta, reason)
@@ -74,12 +74,13 @@ def pay_installment(
     loan_closed = remaining_unpaid == 0
     if loan_closed:
         loan.loan_status = "closed"
-        xp_service.add_xp(db, user, 60, "full_repay")
-        xp_delta += 60
+        xp_service.add_xp(db, user, 20, "full_repay")
+        xp_delta += 20
 
     db.commit()
     db.refresh(repayment)
     db.refresh(user)
+    leaderboard_service.invalidate_cache()
 
     return PaymentResponse(
         repayment=RepaymentResponse.model_validate(repayment),

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { TouchableOpacity, View, Text, ScrollView, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "@/store/auth";
@@ -60,12 +61,13 @@ export default function LeaderboardScreen() {
   };
 
   useEffect(() => { load(); }, []);
+  useFocusEffect(useCallback(() => { load(); }, []));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const myEntry = entries.find((e) => e.user_id === user?.id);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0c0f0b" }}>
+    <View className="flex-1 bg-canvas-soft">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: insets.top + 48, paddingBottom: 120 }}

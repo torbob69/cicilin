@@ -8,6 +8,8 @@ from app.schemas.user import (
     LoginRequest,
     RefreshRequest,
     ResendOTPRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     TokenResponse,
 )
 from app.services import auth_service
@@ -38,3 +40,13 @@ def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
 @router.post("/resend-otp")
 def resend_otp(data: ResendOTPRequest, db: Session = Depends(get_db)):
     return auth_service.resend_otp(db, data.phone)
+
+
+@router.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    return auth_service.forgot_password(db, data.phone)
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    return auth_service.reset_password(db, data.phone, data.otp_code, data.new_password)

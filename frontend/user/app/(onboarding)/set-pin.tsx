@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
@@ -58,9 +59,14 @@ export default function SetPinScreen() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-canvas-soft"
-      behavior={Platform.OS === "android" ? "height" : "padding"}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <View style={{ paddingTop: insets.top + 24 }} className="flex-1 px-xl">
+      <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: 48, flexGrow: 1 }}
+        className="px-xl"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity
           onPress={() => step === "confirm" ? setStep("set") : router.back()}
           className="mb-xl"
@@ -116,7 +122,7 @@ export default function SetPinScreen() {
             />
           </>
         )}
-      </View>
+      </ScrollView>
 
       <Toast {...toast} onHide={hide} />
     </KeyboardAvoidingView>

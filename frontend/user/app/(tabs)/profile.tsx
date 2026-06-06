@@ -1,5 +1,6 @@
 ﻿import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -58,12 +59,20 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-function EditSheet({ visible, initial, address, onClose, onSave }: {
-  visible: boolean; initial: Employment; address: string;
-  onClose: () => void; onSave: (address: string, emp: Employment) => Promise<void>;
+const HOME_OWNERSHIP_OPTIONS = [
+  { value: "RENT",     label: "Sewa" },
+  { value: "OWN",      label: "Milik Sendiri" },
+  { value: "MORTGAGE", label: "KPR" },
+  { value: "OTHER",    label: "Lainnya" },
+];
+
+function EditSheet({ visible, initial, address, homeOwnership, onClose, onSave }: {
+  visible: boolean; initial: Employment; address: string; homeOwnership: string;
+  onClose: () => void; onSave: (address: string, homeOwnership: string, emp: Employment) => Promise<void>;
 }) {
   const [form, setForm] = useState({
-    address: address,
+    address,
+    homeOwnership,
     occupation: initial.occupation ?? "",
     employer_name: initial.employer_name ?? "",
     job_title: initial.job_title ?? "",
@@ -77,6 +86,7 @@ function EditSheet({ visible, initial, address, onClose, onSave }: {
     if (visible) {
       setForm({
         address,
+        homeOwnership,
         occupation: initial.occupation ?? "",
         employer_name: initial.employer_name ?? "",
         job_title: initial.job_title ?? "",
@@ -91,7 +101,7 @@ function EditSheet({ visible, initial, address, onClose, onSave }: {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await onSave(form.address, {
+      await onSave(form.address, form.homeOwnership, {
         occupation: form.occupation || null,
         employer_name: form.employer_name || null,
         job_title: form.job_title || null,
@@ -106,7 +116,7 @@ function EditSheet({ visible, initial, address, onClose, onSave }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "android" ? "height" : "padding"} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior="padding" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
         <Pressable className="flex-1" onPress={onClose} />
         <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24, maxHeight: "90%" }}>
           <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
@@ -123,6 +133,29 @@ function EditSheet({ visible, initial, address, onClose, onSave }: {
                 value={form.address}
                 onChangeText={set("address")}
               />
+
+              <SectionLabel>Status Hunian</SectionLabel>
+              <View className="flex-row gap-sm flex-wrap">
+                {HOME_OWNERSHIP_OPTIONS.map((opt) => {
+                  const selected = form.homeOwnership === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => set("homeOwnership")(opt.value)}
+                      style={{
+                        paddingHorizontal: 16, paddingVertical: 8, borderRadius: 99,
+                        borderWidth: 1,
+                        borderColor: selected ? "#9fe870" : "rgba(255,255,255,0.12)",
+                        backgroundColor: selected ? "rgba(159,232,112,0.12)" : "transparent",
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontFamily: selected ? "DMSans_600SemiBold" : "DMSans_400Regular", color: selected ? "#9fe870" : "#525550" }}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
               <SectionLabel>Pekerjaan</SectionLabel>
               <Input
@@ -218,9 +251,9 @@ function PinSheet({ visible, hasPinSet, onClose, onSave }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView className="flex-1 justify-end" behavior={Platform.OS === "android" ? "height" : "padding"} style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      <KeyboardAvoidingView className="flex-1 justify-end" behavior="padding" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
         <Pressable className="flex-1" onPress={onClose} />
-        <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24 }}>
+        <View className="bg-canvas rounded-t-3xl px-xl pt-xl" style={{ paddingBottom: insets.bottom + 24, maxHeight: "90%" }}>
           <View className="w-10 h-1 bg-ink/20 rounded-pill self-center mb-xl" />
           <Text className="text-lg font-sans-black text-ink mb-xs">
             {hasPinSet ? "Ganti PIN" : "Buat PIN"}
@@ -231,22 +264,24 @@ function PinSheet({ visible, hasPinSet, onClose, onSave }: {
               : "Buat PIN 6 digit untuk keamanan akunmu."}
           </Text>
 
-          <View className="gap-2xl">
-            {hasPinSet && (
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View className="gap-2xl pb-md">
+              {hasPinSet && (
+                <View>
+                  <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">PIN Saat Ini</Text>
+                  <OtpInput value={currentPin} onChange={setCurrentPin} secureTextEntry />
+                </View>
+              )}
               <View>
-                <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">PIN Saat Ini</Text>
-                <OtpInput value={currentPin} onChange={setCurrentPin} secureTextEntry />
+                <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">PIN Baru</Text>
+                <OtpInput value={newPin} onChange={setNewPin} secureTextEntry />
               </View>
-            )}
-            <View>
-              <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">PIN Baru</Text>
-              <OtpInput value={newPin} onChange={setNewPin} secureTextEntry />
+              <View>
+                <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">Konfirmasi PIN Baru</Text>
+                <OtpInput value={confirmPin} onChange={setConfirmPin} secureTextEntry />
+              </View>
             </View>
-            <View>
-              <Text className="text-xs font-sans-semibold text-mute uppercase tracking-wider mb-lg text-center">Konfirmasi PIN Baru</Text>
-              <OtpInput value={confirmPin} onChange={setConfirmPin} secureTextEntry />
-            </View>
-          </View>
+          </ScrollView>
 
           {error ? (
             <Text style={{ color: "#f87171", fontSize: 13, textAlign: "center", marginTop: 16 }}>{error}</Text>
@@ -305,10 +340,12 @@ export default function ProfileScreen() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSave = async (address: string, emp: Employment) => {
+  useFocusEffect(useCallback(() => { fetchProfile(); }, []));
+
+  const handleSave = async (address: string, homeOwnership: string, emp: Employment) => {
     try {
       await Promise.all([
-        userService.updateMe({ address }),
+        userService.updateMe({ address, home_ownership: homeOwnership || undefined }),
         userService.updateEmployment({
           occupation: emp.occupation ?? "",
           employer_name: emp.employer_name ?? "",
@@ -343,8 +380,8 @@ export default function ProfileScreen() {
     router.replace("/(auth)/login");
   };
 
-  const rank = rankData?.rank ?? user?.rank ?? "Gold";
-  const xp = rankData?.xp ?? user?.xp ?? 0;
+  const rank = user?.rank ?? rankData?.rank ?? "Gold";
+  const xp = user?.xp ?? rankData?.xp ?? 0;
   const rate = rankData?.interest_rate ?? RANK_RATE[rank] ?? 15;
   const monthlyLimit = rankData?.monthly_limit ?? RANK_LIMIT[rank] ?? 0;
   const [xpMin, xpMax] = RANK_XP[rank] ?? [0, 100];
@@ -424,6 +461,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <InfoRow label="Alamat" value={user?.address} />
+          <InfoRow label="Status Hunian" value={HOME_OWNERSHIP_OPTIONS.find(o => o.value === user?.home_ownership)?.label ?? user?.home_ownership} />
           <InfoRow label="Profesi" value={employment.occupation} />
           <InfoRow label="Perusahaan" value={employment.employer_name} />
           <InfoRow label="Jabatan" value={employment.job_title} />
@@ -442,7 +480,7 @@ export default function ProfileScreen() {
           {/* KYC row — only when not yet approved */}
           {kycStatus && kycStatus.review_status !== "approved" && (
             <TouchableOpacity
-              onPress={() => router.push("/(onboarding)/documents")}
+              onPress={() => router.push("/(onboarding)/documents?from=profile")}
               className="flex-row justify-between items-center py-md"
               style={{ borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}
             >
@@ -500,7 +538,7 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      <EditSheet visible={editOpen} initial={employment} address={user?.address ?? ""} onClose={() => setEditOpen(false)} onSave={handleSave} />
+      <EditSheet visible={editOpen} initial={employment} address={user?.address ?? ""} homeOwnership={user?.home_ownership ?? ""} onClose={() => setEditOpen(false)} onSave={handleSave} />
       <PinSheet visible={pinOpen} hasPinSet={user?.has_pin ?? false} onClose={() => setPinOpen(false)} onSave={handlePinSave} />
       <Toast {...toast} onHide={hide} />
 

@@ -33,10 +33,10 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0c0f0b" }}>
       <SafeAreaProvider>
-        <Stack screenOptions={{ headerShown: false, animation: "slide_from_right" }}>
+        <Stack screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 220 }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
           <Stack.Screen name="profile/edit" />
         </Stack>
       </SafeAreaProvider>
