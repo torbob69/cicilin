@@ -10,7 +10,6 @@ from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.models.loan_application import LoanApplication
 from app.models.user import User
-from app.services import leaderboard_service
 from app.schemas.admin import (
     AdminKYCListItem,
     AdminLoanListItem,
@@ -245,7 +244,6 @@ def dev_override_user(db: Session, user_id: int, data: DevUserOverrideRequest) -
 
     db.commit()
     db.refresh(user)
-    leaderboard_service.invalidate_cache()
     return dev_get_user(db, user_id)
 
 

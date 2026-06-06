@@ -23,7 +23,6 @@ from app.models.credit_history import CreditHistory
 from app.models.kyc_document import KYCDocument
 from app.schemas.user import RegisterRequest, TokenResponse
 from app.schemas.admin import AdminTokenResponse
-from app.services import leaderboard_service
 
 
 # ── OTP ───────────────────────────────────────────────────────────────────────
@@ -172,7 +171,6 @@ def verify_otp(db: Session, phone: str, code: str, purpose: str) -> TokenRespons
 
     if purpose == "registration":
         user.is_verified = True
-        leaderboard_service.invalidate_cache()
 
     db.commit()
 

@@ -7,7 +7,7 @@ from app.models.loan_application import LoanApplication
 from app.models.repayment import Repayment
 from app.models.user import User
 from app.schemas.loan import PaymentResponse, RepaymentResponse
-from app.services import xp_service, leaderboard_service
+from app.services import xp_service
 
 _PAYABLE_STATUSES = {"pending", "overdue"}
 
@@ -80,7 +80,6 @@ def pay_installment(
     db.commit()
     db.refresh(repayment)
     db.refresh(user)
-    leaderboard_service.invalidate_cache()
 
     return PaymentResponse(
         repayment=RepaymentResponse.model_validate(repayment),
