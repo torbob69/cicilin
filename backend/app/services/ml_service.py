@@ -140,8 +140,10 @@ class MLService:
 
         df = pd.DataFrame([row], columns=_FEATURE_COLUMNS)
 
-        prediction = int(self._model.predict(df)[0])
         proba = self._model.predict_proba(df)[0]
+        # proba[1] = P(rejected/default). Custom threshold (lower than 0.5 default)
+        # tightens the policy: more applicants are flagged as rejected.
+        prediction = 1 if proba[1] >= settings.ML_REJECTION_THRESHOLD else 0
         confidence = float(proba[prediction])
 
         # SHAP — pass preprocessed data so the bare GBM sees the same
@@ -154,14 +156,24 @@ class MLService:
         raw = self._explainer.shap_values(df_shap, check_additivity=False)
         if hasattr(raw, "values"):
             raw = raw.values
+        # Normalize across SHAP versions so positive = pushes toward APPROVAL (class 0):
+        #   - Old SHAP returns list [shap_class_0, shap_class_1] → take class 0
+        #   - New SHAP returns a 2D ndarray of decision-function SHAP (toward class 1
+        #     = rejected) → negate the sign
+        #   - Multi-class 3D output → take the class-0 slice
         if isinstance(raw, list):
-            raw = raw[1]
-        # SHAP values w.r.t. class 1 (approved): positive = pushes toward approval
-        sv: list[float] = np.array(raw)[0].tolist()
+            arr = np.asarray(raw[0])
+        else:
+            arr = np.asarray(raw)
+            if arr.ndim == 3:
+                arr = arr[:, :, 0]
+            else:
+                arr = -arr
+        sv: list[float] = arr[0].tolist()
         shap_explanation = self._build_shap_explanation(sv)
 
         return {
-            "loan_status":      prediction,   # 1 = approved, 0 = rejected
+            "loan_status":      prediction,   # 0 = approved, 1 = rejected
             "confidence":       round(confidence, 4),
             "shap_explanation": shap_explanation,
         }

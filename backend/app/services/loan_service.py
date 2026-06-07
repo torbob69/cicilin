@@ -180,7 +180,7 @@ def apply_loan(db: Session, user: User, data: LoanApplyRequest) -> LoanApplicati
     threshold       = settings.ML_CONFIDENCE_THRESHOLD
 
     if confidence >= threshold:
-        loan_status   = "approved" if ml_score == 1 else "rejected"
+        loan_status   = "approved" if ml_score == 0 else "rejected"
         review_status = "not_required"
     else:
         loan_status   = "manual_review"

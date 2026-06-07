@@ -24,7 +24,7 @@ def score(data: PredictionRequest) -> PredictionResponse:
     )
     threshold = settings.ML_CONFIDENCE_THRESHOLD
     if result["confidence"] >= threshold:
-        decision = "approved" if result["loan_status"] == 1 else "rejected"
+        decision = "approved" if result["loan_status"] == 0 else "rejected"
     else:
         decision = "manual_review"
     return PredictionResponse(

@@ -114,9 +114,9 @@ export default function LoanReview() {
 
                 {/* ML decision */}
                 <span className={`text-xs font-bold px-2 py-1 rounded-full hidden md:inline ${
-                  loan.ml_score === 1 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                  loan.ml_score === 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
                 }`}>
-                  ML: {loan.ml_score === 1 ? 'Approve' : 'Reject'}
+                  ML: {loan.ml_score === 0 ? 'Approve' : 'Reject'}
                 </span>
 
                 <StatusBadge status={loan.review_status} className="flex-shrink-0" />
@@ -152,12 +152,12 @@ export default function LoanReview() {
 
                   {/* ML recommendation box */}
                   <div className={`mb-5 rounded-xl px-4 py-3 border ${
-                    loan.ml_score === 1
+                    loan.ml_score === 0
                       ? 'bg-green-500/5 border-green-500/20 text-green-400'
                       : 'bg-red-500/5 border-red-500/20 text-red-400'
                   }`}>
                     <p className="text-sm font-semibold">
-                      Rekomendasi ML: <strong>{loan.ml_score === 1 ? '✓ Setujui' : '✕ Tolak'}</strong>
+                      Rekomendasi ML: <strong>{loan.ml_score === 0 ? '✓ Setujui' : '✕ Tolak'}</strong>
                       {loan.confidence !== null && ` (confidence: ${(loan.confidence * 100).toFixed(1)}%)`}
                     </p>
                     <p className="text-xs mt-1 opacity-70">

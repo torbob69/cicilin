@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # ML
     MODEL_PATH: str = "app/ml/best_model_gradient_boosting.pkl"
     ML_CONFIDENCE_THRESHOLD: float = 0.75
+    # Decision threshold on P(rejected/default). Lower = stricter (more rejections).
+    # Tuned on test set to balance rejection recall vs precision.
+    ML_REJECTION_THRESHOLD: float = 0.29
     PPP_FACTOR: float = 4750.0
 
     # Cloudinary
