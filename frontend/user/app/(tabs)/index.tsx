@@ -310,7 +310,7 @@ export default function HomeScreen() {
               <SkeletonCard /><SkeletonCard />
             </View>
           ) : activeLoans.length === 0 ? (
-            <View className="rounded-xl px-xl py-2xl items-center gap-sm border">
+            <View className="px-xl py-2xl items-center gap-sm">
               <Text className="text-sm text-mute text-center">Belum ada pinjaman aktif</Text>
               <TouchableOpacity
                 onPress={() => router.push("/(tabs)/apply")}
